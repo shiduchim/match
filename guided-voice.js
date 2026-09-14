@@ -1,5 +1,5 @@
 /* PeerMatch Guided Voice Entry
-   Walks through Name, Age, Profile, and Who sent it / phone one field at a time. */
+   Walks through Name, Age, Profile, Sender name, and Sender phone one field at a time. */
 (function(){
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   const baseAddP=window.addP||addP;
@@ -31,16 +31,55 @@
     return null;
   }
 
+  function cleanPhoneSpeech(s){
+    const raw=String(s||'').trim();
+    const plus=/^\s*(?:plus|\+)/i.test(raw);
+    const digitWords={zero:'0',oh:'0',o:'0',one:'1',two:'2',three:'3',four:'4',five:'5',six:'6',seven:'7',eight:'8',nine:'9'};
+    const parts=raw.toLowerCase().replace(/[^a-z0-9+]/g,' ').split(/\s+/).filter(Boolean);
+    let digits='';
+    parts.forEach(p=>{
+      if(/^\d+$/.test(p))digits+=p;
+      else if(digitWords[p]!=null)digits+=digitWords[p];
+    });
+    if(digits.length<5)return '';
+    return (plus?'+':'')+digits;
+  }
+
+  function getMaleVoice(){
+    try{
+      const voices=speechSynthesis.getVoices()||[];
+      const male=/google uk english male|microsoft (david|guy|mark)|\b(david|guy|mark|george|james|daniel|thomas|matthew|aaron|arthur|oliver|ryan|fred|ralph)\b/i;
+      const english=voices.filter(v=>/^en(?:-|_)/i.test(v.lang||''));
+      return english.find(v=>male.test(v.name||'')) || voices.find(v=>male.test(v.name||'')) || english[0] || voices[0] || null;
+    }catch(e){return null;}
+  }
+
+  function makeUtterance(text){
+    const u=new SpeechSynthesisUtterance(text);
+    const v=getMaleVoice();
+    if(v)u.voice=v;
+    u.rate=.96;
+    u.pitch=.78;
+    return u;
+  }
+
   function speakThen(text,after){
     const run=()=>setTimeout(after,250);
     try{
       if(!('speechSynthesis'in window))return run();
       speechSynthesis.cancel();
-      const u=new SpeechSynthesisUtterance(text);
-      u.rate=.96;
+      const u=makeUtterance(text);
       u.onend=run;u.onerror=run;
       speechSynthesis.speak(u);
     }catch(e){run();}
+  }
+
+  function speakOnly(text){
+    try{
+      if(!('speechSynthesis'in window))return;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(makeUtterance(text));
+    }catch(e){}
   }
 
   function enhanceGuidedVoice(){
@@ -56,7 +95,7 @@
     quick.parentNode.insertBefore(guided,quick);
 
     const status=document.getElementById('pmVoiceStatus');
-    if(status)status.textContent='Guided Voice asks you each question separately. Quick Voice lets you say everything in one sentence.';
+    if(status)status.textContent='Guided Voice asks each question separately. Quick Voice lets you say the main profile details in one sentence.';
 
     guided.onclick=()=>startGuide();
   }
@@ -81,7 +120,8 @@
       {field:'pnm',question:'What is the name?',spoken:'What is the name?',apply:t=>t.trim()},
       {field:'page',question:'What is the age?',spoken:'What is the age?',apply:t=>{const n=numberFromWords(t);return n&&n>=18&&n<=99?String(n):'';}},
       {field:'pt',question:'Tell me the profile.',spoken:'Tell me the profile.',apply:t=>t.trim()},
-      {field:'ps',question:'Who sent this profile? Say their name and phone number.',spoken:'Who sent this profile? Say their name and phone number.',apply:t=>t.trim()}
+      {field:'psn',question:'Who sent you this profile?',spoken:'Who sent you this profile?',apply:t=>t.trim()},
+      {field:'psp',question:"What is the sender's phone number?",spoken:"What is the sender's phone number?",apply:t=>cleanPhoneSpeech(t)}
     ];
     let i=0,recognition=null,stopped=false;
 
@@ -101,13 +141,21 @@
       document.getElementById('gvStop').onclick=restore;
     }
 
+    function showRetry(message){
+      draw(message,false);
+      const actions=panel.querySelector('.gvActions');
+      const retry=document.createElement('button');
+      retry.className='secondary';retry.textContent='Retry';retry.onclick=ask;
+      actions.insertBefore(retry,actions.firstChild);
+    }
+
     function next(){
       if(stopped)return;
       i++;
       if(i>=steps.length){
-        panel.innerHTML='<div class="gvQuestion">✓ Voice entry complete</div><div class="gvHeard">Review the four fields below, make any corrections, then tap Save.</div><div class="gvActions"><button id="gvDone" class="primary">Done</button></div>';
+        panel.innerHTML='<div class="gvQuestion">✓ Voice entry complete</div><div class="gvHeard">Review the five fields below, make any corrections, then tap Save.</div><div class="gvActions"><button id="gvDone" class="primary">Done</button></div>';
         document.getElementById('gvDone').onclick=restore;
-        try{speechSynthesis?.speak(new SpeechSynthesisUtterance('Done. Please review the profile before saving.'))}catch(e){}
+        speakOnly('Done. Please review the profile before saving.');
         return;
       }
       ask();
@@ -127,9 +175,11 @@
         const heard=e.results?.[0]?.[0]?.transcript||'';
         const value=s.apply(heard);
         if(s.field==='page'&&!value){
-          draw('I heard “'+heard+'”, but I could not find an age from 18 to 99. Tap the question again by using Retry below.',false);
-          const actions=panel.querySelector('.gvActions');
-          const retry=document.createElement('button');retry.className='secondary';retry.textContent='Retry';retry.onclick=ask;actions.insertBefore(retry,actions.firstChild);
+          showRetry('I heard “'+heard+'”, but I could not find an age from 18 to 99.');
+          return;
+        }
+        if(s.field==='psp'&&!value){
+          showRetry('I heard “'+heard+'”, but I could not recognize a phone number.');
           return;
         }
         if(value){
@@ -145,16 +195,14 @@
       };
       recognition.onerror=e=>{
         if(stopped||e.error==='aborted')return;
-        draw('I did not catch that. Tap Retry or Skip.',false);
-        const actions=panel.querySelector('.gvActions');
-        const retry=document.createElement('button');retry.className='secondary';retry.textContent='Retry';retry.onclick=ask;actions.insertBefore(retry,actions.firstChild);
+        showRetry('I did not catch that. Tap Retry or Skip.');
       };
       recognition.onend=()=>{
-        if(!got&&!stopped&&panel.isConnected&&!panel.querySelector('button:first-child')?.textContent?.includes('Retry')){
-          // onerror usually handles this; keep the current question visible otherwise.
+        if(!got&&!stopped&&panel.isConnected){
+          // Keep the current question visible; errors are handled above when supplied.
         }
       };
-      try{recognition.start()}catch(e){draw('Microphone could not start. Tap Retry.',false);}
+      try{recognition.start()}catch(e){showRetry('Microphone could not start. Tap Retry.');}
     }
 
     function ask(){
@@ -171,7 +219,6 @@
     setTimeout(enhanceGuidedVoice,0);
   };
 
-  // Rebind existing Add buttons to the wrapped addP.
   setTimeout(()=>{
     try{
       const g=document.getElementById('addGuy'),l=document.getElementById('addGirl');
