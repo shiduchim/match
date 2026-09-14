@@ -1,5 +1,5 @@
-const CACHE='peermatch-v14';
-const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./peermatch-v11.js','./unified-media.js','./peermatch-v14.js'];
+const CACHE='peermatch-v15';
+const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./peermatch-v11.js','./unified-media.js','./peermatch-v14.js','./audio-profile-text.js'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));
@@ -50,10 +50,11 @@ async function saveShare(req){
 async function withEnhancer(response){
   const text=await response.text();
   let html=text;
-  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=14"></script></body>');
-  if(!html.includes('peermatch-v11.js')) html=html.replace('</body>','<script src="./peermatch-v11.js?v=14"></script></body>');
-  if(!html.includes('unified-media.js')) html=html.replace('</body>','<script src="./unified-media.js?v=14"></script></body>');
-  if(!html.includes('peermatch-v14.js')) html=html.replace('</body>','<script src="./peermatch-v14.js?v=14"></script></body>');
+  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=15"></script></body>');
+  if(!html.includes('peermatch-v11.js')) html=html.replace('</body>','<script src="./peermatch-v11.js?v=15"></script></body>');
+  if(!html.includes('unified-media.js')) html=html.replace('</body>','<script src="./unified-media.js?v=15"></script></body>');
+  if(!html.includes('peermatch-v14.js')) html=html.replace('</body>','<script src="./peermatch-v14.js?v=15"></script></body>');
+  if(!html.includes('audio-profile-text.js')) html=html.replace('</body>','<script src="./audio-profile-text.js?v=15"></script></body>');
   const headers=new Headers(response.headers);
   headers.set('content-type','text/html; charset=utf-8');
   headers.delete('content-length');
