@@ -13,7 +13,6 @@
     .pmOcrStatus{font-size:13px;color:var(--muted);margin:9px 0;line-height:1.4}
     .pmShotPreview{display:block;max-width:100%;max-height:250px;object-fit:contain;margin:9px auto;border-radius:12px;border:1px solid var(--line);background:#f5f5f5}
     .pmOcrText{min-height:190px}
-    .pmOcrActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
   `;
   document.head.appendChild(style);
 
@@ -68,7 +67,7 @@
     const imgUrl=URL.createObjectURL(file);
     open(`<h2>Import ${who} from screenshot</h2>
       <div class="small">Check the text below. You can fix anything before continuing.</div>
-      <img class="pmShotPreview" id="pmShotPreview" src="${imgUrl}" alt="Selected screenshot">
+      <img class="pmShotPreview" src="${imgUrl}" alt="Selected screenshot">
       <label>Profile text<textarea id="pmOcrText" class="pmOcrText">${esc(text)}</textarea></label>
       <button id="pmOcrUse" class="primary full">Use this profile</button><div class="gap"></div>
       <button id="pmOcrCancel" class="secondary full">Cancel</button>`);
@@ -76,7 +75,7 @@
       const t=$('pmOcrText').value.trim();
       if(!t)return alert('No profile text was found. Type or paste the profile text first.');
       URL.revokeObjectURL(imgUrl);
-      addP(k,{text:t,photo:file});
+      addP(k,{text:t});
     };
     $('pmOcrCancel').onclick=()=>{URL.revokeObjectURL(imgUrl);close();};
   }
@@ -86,7 +85,7 @@
     input.type='file';input.accept='image/*';
     input.onchange=async()=>{
       const file=input.files?.[0];if(!file)return;
-      open(`<h2>Reading screenshot</h2><div id="pmOcrStatus" class="pmOcrStatus">Opening image…</div><div class="card"><div class="small">The screenshot is processed in your browser. PeerMatch does not upload the profile image to its own server.</div></div><button id="pmOcrStop" class="secondary full">Cancel</button>`);
+      open(`<h2>Reading screenshot</h2><div id="pmOcrStatus" class="pmOcrStatus">Opening image…</div><div class="card"><div class="small">The screenshot is read in your browser. PeerMatch uses it to extract text, not as the person’s profile photo.</div></div><button id="pmOcrStop" class="secondary full">Cancel</button>`);
       let cancelled=false;
       $('pmOcrStop').onclick=()=>{cancelled=true;close();};
       const status=t=>{const el=document.getElementById('pmOcrStatus');if(el)el.textContent=t;};
