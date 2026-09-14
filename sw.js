@@ -1,5 +1,5 @@
-const CACHE='peermatch-v23';
-const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./peermatch-v11.js','./ui-v18.js','./peermatch-v19.js','./audio-v22.js','./audio-v23.js'];
+const CACHE='peermatch-v24';
+const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./peermatch-v11.js','./ui-v18.js','./peermatch-v19.js','./audio-v24.js'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));
@@ -15,7 +15,7 @@ self.addEventListener('activate',e=>{
     await Promise.all(clients.map(c=>{
       try{
         const u=new URL(c.url);
-        u.searchParams.set('pmv','23');
+        u.searchParams.set('pmv','24');
         return c.navigate(u.href).catch(()=>{});
       }catch(err){return c.navigate(c.url).catch(()=>{});}
     }));
@@ -56,12 +56,11 @@ async function saveShare(req){
 async function withEnhancer(response){
   const text=await response.text();
   let html=text;
-  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=23"></script></body>');
-  if(!html.includes('peermatch-v11.js')) html=html.replace('</body>','<script src="./peermatch-v11.js?v=23"></script></body>');
-  if(!html.includes('ui-v18.js')) html=html.replace('</body>','<script src="./ui-v18.js?v=23"></script></body>');
-  if(!html.includes('peermatch-v19.js')) html=html.replace('</body>','<script src="./peermatch-v19.js?v=23"></script></body>');
-  if(!html.includes('audio-v22.js')) html=html.replace('</body>','<script src="./audio-v22.js?v=23"></script></body>');
-  if(!html.includes('audio-v23.js')) html=html.replace('</body>','<script src="./audio-v23.js?v=23"></script></body>');
+  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=24"></script></body>');
+  if(!html.includes('peermatch-v11.js')) html=html.replace('</body>','<script src="./peermatch-v11.js?v=24"></script></body>');
+  if(!html.includes('ui-v18.js')) html=html.replace('</body>','<script src="./ui-v18.js?v=24"></script></body>');
+  if(!html.includes('peermatch-v19.js')) html=html.replace('</body>','<script src="./peermatch-v19.js?v=24"></script></body>');
+  if(!html.includes('audio-v24.js')) html=html.replace('</body>','<script src="./audio-v24.js?v=24"></script></body>');
   const headers=new Headers(response.headers);
   headers.set('content-type','text/html; charset=utf-8');
   headers.delete('content-length');
@@ -74,7 +73,7 @@ self.addEventListener('fetch',e=>{
     e.respondWith((async()=>{
       try{
         await saveShare(e.request);
-        return Response.redirect('./?pmv=23&shared=1',303);
+        return Response.redirect('./?pmv=24&shared=1',303);
       }catch(err){
         return new Response('Import failed',{status:500});
       }
