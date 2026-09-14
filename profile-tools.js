@@ -1,6 +1,6 @@
 /* PeerMatch profile entry + bulk management enhancements.
    Adds structured name/age fields, browser voice dictation, editing,
-   and bulk selection/deletion for Guys and Girls. */
+   separate sender name/phone fields, and bulk selection/deletion. */
 (function(){
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const selecting = {guys:false,girls:false};
@@ -21,14 +21,18 @@
     .pmMeta{display:flex;gap:6px;flex-wrap:wrap}
     .pmPill{display:inline-block;background:#eef3f6;border-radius:999px;padding:3px 8px;font-size:12px;color:#315b78;margin-top:4px}
     .pmGrid{display:grid;grid-template-columns:1fr 110px;gap:9px}
-    @media(max-width:430px){.pmGrid{grid-template-columns:1fr 96px}}
+    .pmSourceGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    @media(max-width:430px){.pmGrid{grid-template-columns:1fr 96px}.pmSourceGrid{grid-template-columns:1fr}}
   `;
   document.head.appendChild(style);
+
+  function senderName(x){return (x.sourceName||x.source||'').trim();}
+  function senderPhone(x){return (x.sourcePhone||'').trim();}
 
   function visiblePeople(k){
     const q=(document.getElementById(k+'Search')?.value||'').toLowerCase();
     return data[k].filter(x=>(
-      (x.name||'')+' '+(x.age||'')+' '+(x.text||'')+' '+(x.source||'')+' '+
+      (x.name||'')+' '+(x.age||'')+' '+(x.text||'')+' '+senderName(x)+' '+senderPhone(x)+' '+
       (x.activities||[]).map(n=>n.text||'').join(' ')
     ).toLowerCase().includes(q));
   }
@@ -140,8 +144,8 @@
       const isSel=selected[k].has(x.id);
       d.className='card'+(isSel?' pmSelected':'');
       const im=x.photo?`<img class="photo" src="${url(x.photo)}">`:'<div class="photo">Photo</div>';
-      const age=x.age||deriveAge(x.text);
-      const meta=[age?`<span class="pmPill">Age ${esc(age)}</span>`:'',x.source?`<span class="pmPill">From ${esc(x.source)}</span>`:''].join('');
+      const age=x.age||deriveAge(x.text),sentBy=senderName(x),sentPhone=senderPhone(x);
+      const meta=[age?`<span class="pmPill">Age ${esc(age)}</span>`:'',sentBy?`<span class="pmPill">From ${esc(sentBy)}</span>`:'',sentPhone?`<span class="pmPill">${esc(sentPhone)}</span>`:''].join('');
       d.innerHTML=`<div class="cardRow"><div class="left">${selecting[k]?`<input class="pmCheck" type="checkbox" ${isSel?'checked':''} aria-label="Select ${esc(x.name||'profile')}">`:''}${im}<div><div class="name">${esc(x.name||'Unnamed profile')}</div><div class="pmMeta">${meta}</div><div class="small">${esc(last(x).slice(0,85))}</div></div></div><div>${selecting[k]?'':'›'}</div></div>`;
       d.onclick=e=>{
         if(selecting[k]){
@@ -162,7 +166,7 @@
       <button id="pmVoiceFill" class="secondary full pmVoice">🎙 Voice Fill</button><div id="pmVoiceStatus" class="pmVoiceStatus">Say “Name…, age…, profile…” and PeerMatch will fill it in.</div>
       <label>Profile<textarea id="pt" placeholder="Paste the profile, type it, or use Voice Fill">${esc(txt)}</textarea></label>
       <label>Photo (optional)<input id="pp" type="file" accept="image/*"></label>
-      <label>Who sent/told you?<input id="ps"></label>
+      <div class="pmSourceGrid"><label>Sender name<input id="psn" placeholder="Who sent/told you?"></label><label>Sender phone<input id="psp" type="tel" inputmode="tel" placeholder="Phone number"></label></div>
       <button id="pv" class="primary full">Save ${s}</button><div class="gap"></div><button id="pc" class="secondary full">Cancel</button>`);
     attachVoice();
     $('pv').onclick=async()=>{
@@ -171,7 +175,8 @@
       if(age && (Number(age)<18||Number(age)>99))return alert('Check the age.');
       if(!name)name=(t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)[0]||s).slice(0,70);
       let photo=$('pp').files?.[0]||shared?.photo||null;
-      data[k].unshift({id:Date.now(),name,age:age||deriveAge(t),text:t,photo,source:$('ps').value.trim(),activities:[]});
+      const sourceName=$('psn').value.trim(),sourcePhone=$('psp').value.trim();
+      data[k].unshift({id:Date.now(),name,age:age||deriveAge(t),text:t,photo,source:sourceName,sourceName,sourcePhone,activities:[]});
       await save();await del('inbox','pending');close();renderP(k);show(k);
     };
     $('pc').onclick=close;
@@ -179,17 +184,19 @@
 
   function editP(k,id){
     const x=item(k,id); if(!x)return;
-    const age=x.age||deriveAge(x.text);
+    const age=x.age||deriveAge(x.text),oldSender=senderName(x),oldPhone=senderPhone(x);
     open(`<h2>Edit ${k==='guys'?'Guy':'Girl'}</h2>
       <div class="pmGrid"><label>Name<input id="pen" value="${esc(x.name||'')}"></label><label>Age<input id="pea" type="number" min="18" max="99" inputmode="numeric" value="${esc(age)}"></label></div>
       <label>Profile<textarea id="pet">${esc(x.text||'')}</textarea></label>
-      <label>Who sent/told you?<input id="pes" value="${esc(x.source||'')}"></label>
+      <div class="pmSourceGrid"><label>Sender name<input id="pesn" value="${esc(oldSender)}"></label><label>Sender phone<input id="pesp" type="tel" inputmode="tel" value="${esc(oldPhone)}"></label></div>
       <button id="peSave" class="primary full">Save Changes</button><div class="gap"></div><button id="peCancel" class="secondary full">Cancel</button>`);
     $('peSave').onclick=async()=>{
       x.name=$('pen').value.trim()||x.name;
       x.age=$('pea').value.trim();
       x.text=$('pet').value.trim();
-      x.source=$('pes').value.trim();
+      x.sourceName=$('pesn').value.trim();
+      x.sourcePhone=$('pesp').value.trim();
+      x.source=x.sourceName;
       await save();renderP(k);openP(k,id);
     };
     $('peCancel').onclick=()=>openP(k,id);
@@ -198,8 +205,9 @@
   openP=function(k,id){
     const x=data[k].find(z=>z.id===id); if(!x)return;
     const im=x.photo?`<img style="width:140px;height:140px;border-radius:18px;object-fit:cover" src="${url(x.photo)}">`:'';
-    const age=x.age||deriveAge(x.text);
-    open(`<h2>${esc(x.name||'Unnamed profile')}</h2>${im}${age?`<div class="pmPill" style="margin:6px 0 10px">Age ${esc(age)}</div>`:''}<div class="card"><div class="profileText">${esc(x.text||'')}</div></div><button id="pe" class="secondary full">Edit Profile</button><div class="sectionTitle">What I did to help / notes</div>${acts(x)}<button id="pn" class="secondary full">Add text note</button><div class="gap"></div><button id="pa" class="secondary full">Record audio note</button><div class="gap"></div><button id="px" class="secondary full">Close</button>`);
+    const age=x.age||deriveAge(x.text),sentBy=senderName(x),sentPhone=senderPhone(x);
+    const info=[age?`<span class="pmPill">Age ${esc(age)}</span>`:'',sentBy?`<span class="pmPill">Sent by ${esc(sentBy)}</span>`:'',sentPhone?`<span class="pmPill">${esc(sentPhone)}</span>`:''].join(' ');
+    open(`<h2>${esc(x.name||'Unnamed profile')}</h2>${im}${info?`<div class="pmMeta" style="margin:6px 0 10px">${info}</div>`:''}<div class="card"><div class="profileText">${esc(x.text||'')}</div></div><button id="pe" class="secondary full">Edit Profile</button><div class="sectionTitle">What I did to help / notes</div>${acts(x)}<button id="pn" class="secondary full">Add text note</button><div class="gap"></div><button id="pa" class="secondary full">Record audio note</button><div class="gap"></div><button id="px" class="secondary full">Close</button>`);
     $('pe').onclick=()=>editP(k,id);
     $('pn').onclick=()=>note(k,id);$('pa').onclick=()=>audio(k,id);$('px').onclick=close;
   };
