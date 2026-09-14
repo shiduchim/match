@@ -1,4 +1,4 @@
-const CACHE='peermatch-v16';
+const CACHE='peermatch-v17';
 const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./peermatch-v11.js','./unified-media.js','./peermatch-v14.js','./audio-profile-text.js','./image-optimizer.js','./audio-notes-transcript.js'];
 
 self.addEventListener('install',e=>{
@@ -50,13 +50,13 @@ async function saveShare(req){
 async function withEnhancer(response){
   const text=await response.text();
   let html=text;
-  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=16"></script></body>');
-  if(!html.includes('peermatch-v11.js')) html=html.replace('</body>','<script src="./peermatch-v11.js?v=16"></script></body>');
-  if(!html.includes('unified-media.js')) html=html.replace('</body>','<script src="./unified-media.js?v=16"></script></body>');
-  if(!html.includes('peermatch-v14.js')) html=html.replace('</body>','<script src="./peermatch-v14.js?v=16"></script></body>');
-  if(!html.includes('audio-profile-text.js')) html=html.replace('</body>','<script src="./audio-profile-text.js?v=16"></script></body>');
-  if(!html.includes('image-optimizer.js')) html=html.replace('</body>','<script src="./image-optimizer.js?v=16"></script></body>');
-  if(!html.includes('audio-notes-transcript.js')) html=html.replace('</body>','<script src="./audio-notes-transcript.js?v=16"></script></body>');
+  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=17"></script></body>');
+  if(!html.includes('peermatch-v11.js')) html=html.replace('</body>','<script src="./peermatch-v11.js?v=17"></script></body>');
+  if(!html.includes('unified-media.js')) html=html.replace('</body>','<script src="./unified-media.js?v=17"></script></body>');
+  if(!html.includes('peermatch-v14.js')) html=html.replace('</body>','<script src="./peermatch-v14.js?v=17"></script></body>');
+  if(!html.includes('audio-profile-text.js')) html=html.replace('</body>','<script src="./audio-profile-text.js?v=17"></script></body>');
+  if(!html.includes('image-optimizer.js')) html=html.replace('</body>','<script src="./image-optimizer.js?v=17"></script></body>');
+  if(!html.includes('audio-notes-transcript.js')) html=html.replace('</body>','<script src="./audio-notes-transcript.js?v=17"></script></body>');
   const headers=new Headers(response.headers);
   headers.set('content-type','text/html; charset=utf-8');
   headers.delete('content-length');
