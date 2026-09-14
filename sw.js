@@ -1,5 +1,5 @@
-const CACHE='peermatch-v4';
-const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./profile-tools.js'];
+const CACHE='peermatch-v5';
+const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./profile-tools.js','./guided-voice.js'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));
@@ -48,8 +48,9 @@ async function saveShare(req){
 async function withEnhancer(response){
   const text=await response.text();
   let html=text;
-  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=4"></script></body>');
-  if(!html.includes('profile-tools.js')) html=html.replace('</body>','<script src="./profile-tools.js?v=4"></script></body>');
+  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=5"></script></body>');
+  if(!html.includes('profile-tools.js')) html=html.replace('</body>','<script src="./profile-tools.js?v=5"></script></body>');
+  if(!html.includes('guided-voice.js')) html=html.replace('</body>','<script src="./guided-voice.js?v=5"></script></body>');
   const headers=new Headers(response.headers);
   headers.set('content-type','text/html; charset=utf-8');
   headers.delete('content-length');
