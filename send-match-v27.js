@@ -1,6 +1,6 @@
-/* PeerMatch v27: checkbox-based Send Match. Girl sender is the default when both sender phones exist. */
+/* PeerMatch v29: checkbox-based Send Match with profile photos/audio in SMS share flow. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='27';
+  document.documentElement.dataset.peerMatchVersion='29';
 
   const style=document.createElement('style');
   style.textContent=`
@@ -16,6 +16,7 @@
     .pmMatchChosen b{display:inline-block;min-width:64px}
     .pmMatchForm select{width:100%;border:1px solid #d6d7d4;background:#fff;border-radius:14px;padding:13px 14px;font:inherit;color:var(--text)}
     .pmMatchMissing{font-size:12px;color:#8a3c2c;margin:8px 0;line-height:1.45}
+    .pmMediaHint{font-size:11px;color:var(--muted);line-height:1.4;margin:7px 1px 0}
     @media(max-width:390px){header.pmMatchHeader{padding-right:102px}.pmSendMatchTop{right:8px;padding:7px 8px;font-size:10px}.pmBH{right:11px}.pmMatchSend{gap:5px}.pmMatchSend button{font-size:10px}}
   `;
   document.head.appendChild(style);
@@ -51,7 +52,7 @@
     lines.push(label+': '+cleanName(x,label+' profile')+(x?.age?' (age '+x.age+')':''));
     const text=String(x?.text||'').trim();
     if(text)lines.push(text);
-    else if(x?.profileAudio)lines.push('[Audio profile is saved in PeerMatch]');
+    else if(x?.profileAudio)lines.push('[Audio profile attached when supported]');
     const sn=senderName(x),sp=senderPhone(x);
     if(sn||sp)lines.push('Sent by: '+(sn||'Sender')+(sp?' • '+sp:''));
     return lines.join('\n');
@@ -91,46 +92,113 @@
     const add=(side,x)=>{
       const p=senderPhone(x);if(!p)return;
       const n=senderName(x);
-      out.push({
-        key:side.toLowerCase(),
-        label:side+' sender'+(n?' — '+n:''),
-        greeting:n||side+' sender',
-        phone:p,
-        side
-      });
+      out.push({key:side.toLowerCase(),label:side+' sender'+(n?' — '+n:''),greeting:n||side+' sender',phone:p,side});
     };
-    // Girl sender first by default when both are available. The user can still switch to Guy sender.
     add('Girl',girl);
     add('Guy',guy);
-    // Avoid duplicate phone choices if the same person sent both profiles; keep the Girl-side choice first.
     return out.filter((r,i,a)=>a.findIndex(z=>z.phone.replace(/\D/g,'')===r.phone.replace(/\D/g,''))===i);
   }
 
-  function addHistory(guy,girl,shadchan,recipient,channel,message){
+  function safeFilePart(s){return String(s||'profile').replace(/[^a-z0-9_-]+/gi,'_').replace(/^_+|_+$/g,'').slice(0,45)||'profile';}
+  function extFor(type,fallback){
+    const t=String(type||'').toLowerCase();
+    if(t==='image/jpeg')return'.jpg';if(t==='image/png')return'.png';if(t==='image/webp')return'.webp';if(t==='image/gif')return'.gif';
+    if(t==='audio/webm')return'.webm';if(t==='audio/mpeg')return'.mp3';if(t==='audio/mp4')return'.m4a';if(t==='audio/ogg')return'.ogg';if(t==='audio/wav')return'.wav';
+    return fallback||'';
+  }
+  function fullPhoto(x){return x?.profileMediaFull||x?.profileImage||x?.photo||null;}
+  function audioProfile(x){return x?.profileAudio||null;}
+  function toFile(blob,name,fallbackType){
+    if(!blob||!(blob instanceof Blob))return null;
+    const type=blob.type||fallbackType||'application/octet-stream';
+    if(typeof File!=='undefined'&&blob instanceof File&&blob.name)return blob;
+    try{return new File([blob],name,{type,lastModified:Date.now()});}
+    catch(e){return null;}
+  }
+  function matchMediaFiles(guy,girl){
+    const files=[];
+    const addProfile=(side,x)=>{
+      const base=safeFilePart(cleanName(x,side));
+      const photo=fullPhoto(x);
+      if(photo instanceof Blob){
+        const f=toFile(photo,side+'_'+base+'_photo'+extFor(photo.type,'.jpg'),'image/jpeg');
+        if(f)files.push(f);
+      }
+      const audio=audioProfile(x);
+      if(audio instanceof Blob){
+        const f=toFile(audio,side+'_'+base+'_audio'+extFor(audio.type,'.webm'),'audio/webm');
+        if(f)files.push(f);
+      }
+    };
+    addProfile('Guy',guy);addProfile('Girl',girl);
+    return files;
+  }
+  function mediaSummary(guy,girl){
+    const parts=[];
+    if(fullPhoto(guy) instanceof Blob)parts.push('Guy photo');
+    if(audioProfile(guy) instanceof Blob)parts.push('Guy audio');
+    if(fullPhoto(girl) instanceof Blob)parts.push('Girl photo');
+    if(audioProfile(girl) instanceof Blob)parts.push('Girl audio');
+    return parts;
+  }
+
+  function addHistory(guy,girl,shadchan,recipient,channel,message,mediaNames){
     const matchId=Date.now(),ts=stamp();
     const gName=cleanName(guy,'Guy profile'),lName=cleanName(girl,'Girl profile');
-    const ch=channel.charAt(0).toUpperCase()+channel.slice(1);
+    const ch=channel==='sms-media'?'SMS / share sheet':channel.charAt(0).toUpperCase()+channel.slice(1);
     const recipientLabel=shadchan?cleanName(shadchan,'Shadchan'):(recipient?.label||'profile sender');
-    const meta={matchId,guyId:guy.id,girlId:girl.id,shadchanId:shadchan?.id||null,channel,message,recipient:recipientLabel,recipientPhone:recipient?.phone||shadchan?.phone||'',recipientSide:recipient?.side||''};
+    const media=(mediaNames||[]).join(', ');
+    const mediaLine=media?'\nAttachments: '+media:'';
+    const meta={matchId,guyId:guy.id,girlId:girl.id,shadchanId:shadchan?.id||null,channel,message,recipient:recipientLabel,recipientPhone:recipient?.phone||shadchan?.phone||'',recipientSide:recipient?.side||'',media:mediaNames||[]};
     guy.activities=guy.activities||[];girl.activities=girl.activities||[];
-    guy.activities.push({id:matchId+1,type:'action',action:'Match sent • '+ch,text:`Match with ${lName} sent to ${recipientLabel} via ${ch}.\n\n${message}`,ts,...meta});
-    girl.activities.push({id:matchId+2,type:'action',action:'Match sent • '+ch,text:`Match with ${gName} sent to ${recipientLabel} via ${ch}.\n\n${message}`,ts,...meta});
+    guy.activities.push({id:matchId+1,type:'action',action:'Match sent • '+ch,text:`Match with ${lName} sent to ${recipientLabel} via ${ch}.${mediaLine}\n\n${message}`,ts,...meta});
+    girl.activities.push({id:matchId+2,type:'action',action:'Match sent • '+ch,text:`Match with ${gName} sent to ${recipientLabel} via ${ch}.${mediaLine}\n\n${message}`,ts,...meta});
     if(shadchan){
       shadchan.activities=shadchan.activities||[];
-      shadchan.activities.push({id:matchId+3,type:'action',action:'Match sent • '+ch,text:`Match sent: ${gName} ↔ ${lName} via ${ch}.\n\n${message}`,ts,...meta});
+      shadchan.activities.push({id:matchId+3,type:'action',action:'Match sent • '+ch,text:`Match sent: ${gName} ↔ ${lName} via ${ch}.${mediaLine}\n\n${message}`,ts,...meta});
+    }
+  }
+
+  async function saveHistory(guy,girl,shadchan,recipient,channel,message,mediaNames){
+    addHistory(guy,girl,shadchan,recipient,channel,message,mediaNames);
+    try{await save();return true;}catch(e){console.warn('PeerMatch v29 match history save',e);alert('PeerMatch could not save the match history. Nothing was opened.');return false;}
+  }
+
+  async function shareSmsWithMedia(guy,girl,shadchan,recipient,message,phone){
+    const files=matchMediaFiles(guy,girl);
+    if(!files.length)return false;
+    if(!navigator.share||!navigator.canShare)return false;
+    let can=false;
+    try{can=navigator.canShare({files});}catch(e){can=false;}
+    if(!can)return false;
+
+    const recipientLabel=shadchan?cleanName(shadchan,'Shadchan'):(recipient?.label||'recipient');
+    const title='Shidduch suggestion';
+    try{
+      await navigator.share({title,text:message,files});
+      const names=mediaSummary(guy,girl);
+      if(!await saveHistory(guy,girl,shadchan,recipient,'sms-media',message,names))return true;
+      try{render();}catch(e){}
+      close();
+      return true;
+    }catch(e){
+      if(e?.name==='AbortError')return true;
+      console.warn('PeerMatch media share failed',e);
+      alert('Your phone could not share all of the photos/audio together. PeerMatch will open a normal text SMS instead.\n\nRecipient: '+recipientLabel+'\n'+phone);
+      return false;
     }
   }
 
   async function handoff(channel,guy,girl,shadchan,recipient,message){
     const subject='Shidduch suggestion: '+cleanName(guy,'Guy')+' & '+cleanName(girl,'Girl');
-    let target='';
+    let target='',phone='';
     if(shadchan){
       if(channel==='whatsapp'){
         if(!waNumber(shadchan.phone))return alert('The selected Shadchan needs a phone number for WhatsApp.');
         target=waUrl(shadchan.phone,message);
       }else if(channel==='sms'){
-        if(!String(shadchan.phone||'').trim())return alert('The selected Shadchan needs a phone number for SMS.');
-        target=smsUrl(shadchan.phone,message);
+        phone=String(shadchan.phone||'').trim();
+        if(!phone)return alert('The selected Shadchan needs a phone number for SMS.');
       }else if(channel==='email'){
         if(!String(shadchan.email||'').trim())return alert('The selected Shadchan needs an email address.');
         target=emailUrl(shadchan.email,subject,message);
@@ -138,11 +206,20 @@
     }else{
       if(channel==='email')return alert('Email currently requires a selected Shadchan because Guy/Girl sender email is not stored.');
       if(!recipient?.phone)return alert('Choose a sender with a phone number.');
-      target=channel==='whatsapp'?waUrl(recipient.phone,message):smsUrl(recipient.phone,message);
+      phone=recipient.phone;
+      if(channel==='whatsapp')target=waUrl(recipient.phone,message);
     }
 
-    addHistory(guy,girl,shadchan,recipient,channel,message);
-    try{await save();}catch(e){console.warn('PeerMatch v27 match history save',e);return alert('PeerMatch could not save the match history. Nothing was opened.');}
+    if(channel==='sms'){
+      const media=matchMediaFiles(guy,girl);
+      if(media.length){
+        const usedShare=await shareSmsWithMedia(guy,girl,shadchan,recipient,message,phone);
+        if(usedShare)return;
+      }
+      target=smsUrl(phone,message);
+    }
+
+    if(!await saveHistory(guy,girl,shadchan,recipient,channel,message,[]))return;
     try{render();}catch(e){}
     close();
     location.href=target;
@@ -161,6 +238,7 @@
 
     const recipients=!shadchan?senderRecipients(guy,girl):[];
     const chosenLabel=shadchan?cleanName(shadchan,'Shadchan'):(recipients[0]?.greeting||'');
+    const media=mediaSummary(guy,girl);
 
     open(`<h2>Send match</h2><div class="pmMatchForm">
       <div class="pmMatchChosen"><div><b>Guy</b>${esc(cleanName(guy,'Guy profile'))}</div><div><b>Girl</b>${esc(cleanName(girl,'Girl profile'))}</div><div><b>Shadchan</b>${shadchan?esc(cleanName(shadchan,'Shadchan')):'Not selected'}</div></div>
@@ -170,6 +248,7 @@
           :'<div class="pmMatchMissing">Both profiles have sender information, but neither has a sender phone number. Add a sender phone or select a Shadchan to send by WhatsApp/SMS.</div>'
       ):''}
       <label>Message<textarea id="pmMatchMessage"></textarea></label>
+      ${media.length?`<div class="pmMediaHint"><b>SMS media:</b> ${esc(media.join(', '))}. Tapping SMS will use the phone share sheet so these files can be attached when supported.</div>`:''}
       <div class="pmMatchHint">The Guy and Girl came from your existing checkbox selections. A Shadchan is optional. If both sender phone numbers are available, Girl sender is selected first by default; you can switch to Guy sender before sending. PeerMatch saves the exact message in both profile histories, and also in the Shadchan history when one is selected.</div>
       <div class="pmMatchSend"><button id="pmMatchWA" class="green">WhatsApp</button><button id="pmMatchSMS" class="secondary">SMS</button><button id="pmMatchEmail" class="secondary">Email</button></div>
       <div class="gap"></div><button id="pmMatchCancel" class="secondary full">Cancel</button>
@@ -197,7 +276,7 @@
 
   function installHeader(){
     const header=document.querySelector('.app>header');if(!header)return;
-    header.querySelectorAll('.pmSendMatchTop,.pmBH,.pmBackupTop').forEach(el=>el.remove());
+    header.querySelectorAll('.pmSendMatchTop,.pmBH').forEach(el=>el.remove());
     header.classList.add('pmMatchHeader');
     const bh=document.createElement('div');bh.className='pmBH';bh.textContent='ב״ה';header.appendChild(bh);
     const b=document.createElement('button');b.type='button';b.className='pmSendMatchTop';b.textContent='Send match';b.onclick=openSendMatch;header.appendChild(b);
