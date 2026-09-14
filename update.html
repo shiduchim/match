@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#315b78">
+  <title>Updating PeerMatch</title>
+  <style>
+    body{margin:0;background:#f6f5f2;color:#19324a;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;display:grid;place-items:center;min-height:100vh}
+    .card{max-width:420px;margin:20px;background:#fff;border:1px solid #e0dfdc;border-radius:18px;padding:24px;text-align:center}
+    h1{font-size:24px;margin:0 0 10px}p{color:#73818b;margin:0}
+  </style>
+</head>
+<body>
+  <div class="card"><h1>Updating PeerMatch…</h1><p>Your saved PeerMatch data will not be deleted.</p></div>
+  <script>
+    (async()=>{
+      try{
+        if('serviceWorker' in navigator){
+          const regs=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r=>r.unregister()));
+        }
+        if('caches' in window){
+          const keys=await caches.keys();
+          await Promise.all(keys.filter(k=>k.startsWith('peermatch-')).map(k=>caches.delete(k)));
+        }
+      }catch(e){}
+      location.replace('./?refresh='+Date.now());
+    })();
+  </script>
+</body>
+</html>
