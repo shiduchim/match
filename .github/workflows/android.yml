@@ -35,12 +35,49 @@ jobs:
       - name: Install Android 35 SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Build release APK
+      - name: Build unsigned release APK
         run: gradle -p android :app:assembleRelease --no-daemon
 
-      - name: Upload unsigned release APK
+      - name: Create release signing key and sign APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-output signing-backup
+          PASS="$(openssl rand -hex 24)"
+          printf '%s' "$PASS" > signing-backup/keystore-password.txt
+          keytool -genkeypair \
+            -keystore signing-backup/peermatch-release.jks \
+            -storetype JKS \
+            -storepass "$PASS" \
+            -keypass "$PASS" \
+            -alias peermatch_release \
+            -keyalg RSA \
+            -keysize 4096 \
+            -validity 10000 \
+            -dname "CN=PeerMatch, OU=Private Android App, O=PeerMatch, L=Tzfat, ST=Northern District, C=IL"
+
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
+            --ks signing-backup/peermatch-release.jks \
+            --ks-key-alias peermatch_release \
+            --ks-pass "pass:$PASS" \
+            --key-pass "pass:$PASS" \
+            --out release-output/PeerMatch-v1.0.0.apk \
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
+
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-output/PeerMatch-v1.0.0.apk | tee release-output/signing-info.txt
+          sha256sum release-output/PeerMatch-v1.0.0.apk | tee release-output/apk-sha256.txt
+
+      - name: Upload signed PeerMatch release
         uses: actions/upload-artifact@v4
         with:
-          name: PeerMatch-Android-Unsigned
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          name: PeerMatch-Release-v1.0.0
+          path: release-output/
           if-no-files-found: error
+
+      - name: Upload signing backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: PeerMatch-Signing-Backup-v1
+          path: signing-backup/
+          if-no-files-found: error
+          retention-days: 90
