@@ -1,5 +1,5 @@
-const CACHE='peermatch-v11';
-const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./peermatch-v11.js'];
+const CACHE='peermatch-v12';
+const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./peermatch-v11.js','./voice-stable.js'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));
@@ -50,8 +50,9 @@ async function saveShare(req){
 async function withEnhancer(response){
   const text=await response.text();
   let html=text;
-  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=11"></script></body>');
-  if(!html.includes('peermatch-v11.js')) html=html.replace('</body>','<script src="./peermatch-v11.js?v=11"></script></body>');
+  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=12"></script></body>');
+  if(!html.includes('peermatch-v11.js')) html=html.replace('</body>','<script src="./peermatch-v11.js?v=12"></script></body>');
+  if(!html.includes('voice-stable.js')) html=html.replace('</body>','<script src="./voice-stable.js?v=12"></script></body>');
   const headers=new Headers(response.headers);
   headers.set('content-type','text/html; charset=utf-8');
   headers.delete('content-length');
