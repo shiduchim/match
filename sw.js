@@ -1,5 +1,5 @@
-const CACHE='peermatch-v9';
-const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./profile-tools.js','./guided-voice.js','./shadchan-edit.js','./ui-fixes.js'];
+const CACHE='peermatch-v10';
+const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./profile-tools.js','./guided-voice.js','./shadchan-edit.js','./ui-fixes.js','./screenshot-import.js'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));
@@ -50,11 +50,12 @@ async function saveShare(req){
 async function withEnhancer(response){
   const text=await response.text();
   let html=text;
-  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=9"></script></body>');
-  if(!html.includes('profile-tools.js')) html=html.replace('</body>','<script src="./profile-tools.js?v=9"></script></body>');
-  if(!html.includes('guided-voice.js')) html=html.replace('</body>','<script src="./guided-voice.js?v=9"></script></body>');
-  if(!html.includes('shadchan-edit.js')) html=html.replace('</body>','<script src="./shadchan-edit.js?v=9"></script></body>');
-  if(!html.includes('ui-fixes.js')) html=html.replace('</body>','<script src="./ui-fixes.js?v=9"></script></body>');
+  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=10"></script></body>');
+  if(!html.includes('profile-tools.js')) html=html.replace('</body>','<script src="./profile-tools.js?v=10"></script></body>');
+  if(!html.includes('guided-voice.js')) html=html.replace('</body>','<script src="./guided-voice.js?v=10"></script></body>');
+  if(!html.includes('shadchan-edit.js')) html=html.replace('</body>','<script src="./shadchan-edit.js?v=10"></script></body>');
+  if(!html.includes('ui-fixes.js')) html=html.replace('</body>','<script src="./ui-fixes.js?v=10"></script></body>');
+  if(!html.includes('screenshot-import.js')) html=html.replace('</body>','<script src="./screenshot-import.js?v=10"></script></body>');
   const headers=new Headers(response.headers);
   headers.set('content-type','text/html; charset=utf-8');
   headers.delete('content-length');
