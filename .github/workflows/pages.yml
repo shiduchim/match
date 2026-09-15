@@ -74,9 +74,10 @@ jobs:
               'make-match-v60-ui.js',
               'whatsapp-import-v61.js',
               'profile-tools-v62.js',
+              'profile-pdf-ocr-v63.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=62"></script>' for name in scripts)
-          if 'profile-tools-v62.js?v=62' not in html:
+          tags = ''.join(f'<script src="./{name}?v=63"></script>' for name in scripts)
+          if 'profile-pdf-ocr-v63.js?v=63' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
