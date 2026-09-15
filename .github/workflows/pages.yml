@@ -83,9 +83,10 @@ jobs:
               'translate-v65.js',
               'make-match-v65-fix.js',
               'waiting-v65.js',
+              'attachment-v66.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=65"></script>' for name in scripts)
-          if 'waiting-v65.js?v=65' not in html:
+          tags = ''.join(f'<script src="./{name}?v=66"></script>' for name in scripts)
+          if 'attachment-v66.js?v=66' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
