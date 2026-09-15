@@ -76,9 +76,16 @@ jobs:
               'profile-tools-v62.js',
               'profile-pdf-ocr-v63.js',
               'phone-links-v64.js',
+              'ux-v65.js',
+              'ux-v65-fix.js',
+              'forms-v65.js',
+              'link-recovery-v65.js',
+              'translate-v65.js',
+              'make-match-v65-fix.js',
+              'waiting-v65.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=64"></script>' for name in scripts)
-          if 'phone-links-v64.js?v=64' not in html:
+          tags = ''.join(f'<script src="./{name}?v=65"></script>' for name in scripts)
+          if 'waiting-v65.js?v=65' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
