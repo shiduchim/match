@@ -63,9 +63,10 @@ jobs:
               'history-composer-v36.js',
               'sender-fields-v39.js',
               'profile-contact-v40.js',
+              'profile-required-v44.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=43"></script>' for name in scripts)
-          if 'profile-contact-v40.js?v=43' not in html:
+          tags = ''.join(f'<script src="./{name}?v=44"></script>' for name in scripts)
+          if 'profile-required-v44.js?v=44' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
