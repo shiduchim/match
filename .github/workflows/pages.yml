@@ -72,9 +72,10 @@ jobs:
               'selection-layout-v54.js',
               'contact-actions-v56.js',
               'make-match-v60-ui.js',
+              'whatsapp-import-v61.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=60"></script>' for name in scripts)
-          if 'make-match-v60-ui.js?v=60' not in html:
+          tags = ''.join(f'<script src="./{name}?v=61"></script>' for name in scripts)
+          if 'whatsapp-import-v61.js?v=61' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
