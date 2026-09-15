@@ -1,4 +1,4 @@
-/* PeerMatch v74: one compact profile contact summary above action buttons. */
+/* PeerMatch v74: one compact profile contact summary. */
 (function(){
   document.documentElement.dataset.peerMatchVersion='74';
   let active=null,queued=false;
@@ -73,8 +73,7 @@
 
     cleanMeta(x);
 
-    // Older layers may keep rebuilding these; hide/remove them and own the visible contact UI here.
-    sheet.querySelectorAll('.pmV67ContactPeople,.pmV73ContactHeading').forEach(el=>el.remove());
+    // Older contact renderers remain hidden in the DOM so their observers do not recreate them continuously.
 
     const name=String(x.sourceName||x.source||'').trim();
     const phone=String(x.sourcePhone||'').trim();
@@ -93,7 +92,8 @@
         box.appendChild(a);
       }
     }
-    if(box.nextElementSibling!==buttons)buttons.insertAdjacentElement('beforebegin',box);
+    // Give later layout scripts ownership after the summary has been inserted once.
+    if(!box.isConnected)buttons.insertAdjacentElement('beforebegin',box);
   }
 
   function polish(){contactSummary();}
