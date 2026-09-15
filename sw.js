@@ -1,4 +1,4 @@
-const CACHE='peermatch-v57';
+const CACHE='peermatch-v58';
 const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./whatsapp-enhance.js','./peermatch-v11.js','./ui-v18.js','./peermatch-v19.js','./audio-v24.js','./send-match-v27.js','./make-match-v32.js','./match-text-required-v33.js','./match-photo-option-v34.js','./make-match-v35-ui.js','./backup-v28.js','./history-delete-v30.js','./history-composer-v36.js','./sender-fields-v39.js','./profile-contact-v40.js','./profile-required-v44.js','./feature-request-v46.js','./profile-display-v48.js','./email-photo-v51.js','./profile-share-v52.js','./shadchan-share-v55.js','./selection-layout-v54.js','./contact-actions-v56.js'];
 
 self.addEventListener('install',e=>{
@@ -15,7 +15,7 @@ self.addEventListener('activate',e=>{
     await Promise.all(clients.map(c=>{
       try{
         const u=new URL(c.url);
-        u.searchParams.set('pmv','57');
+        u.searchParams.set('pmv','58');
         return c.navigate(u.href).catch(()=>{});
       }catch(err){return c.navigate(c.url).catch(()=>{});}
     }));
@@ -56,29 +56,29 @@ async function saveShare(req){
 async function withEnhancer(response){
   const text=await response.text();
   let html=text;
-  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=57"></script></body>');
-  if(!html.includes('peermatch-v11.js')) html=html.replace('</body>','<script src="./peermatch-v11.js?v=57"></script></body>');
-  if(!html.includes('ui-v18.js')) html=html.replace('</body>','<script src="./ui-v18.js?v=57"></script></body>');
-  if(!html.includes('peermatch-v19.js')) html=html.replace('</body>','<script src="./peermatch-v19.js?v=57"></script></body>');
-  if(!html.includes('audio-v24.js')) html=html.replace('</body>','<script src="./audio-v24.js?v=57"></script></body>');
-  if(!html.includes('send-match-v27.js')) html=html.replace('</body>','<script src="./send-match-v27.js?v=57"></script></body>');
-  if(!html.includes('make-match-v32.js')) html=html.replace('</body>','<script src="./make-match-v32.js?v=57"></script></body>');
-  if(!html.includes('match-text-required-v33.js')) html=html.replace('</body>','<script src="./match-text-required-v33.js?v=57"></script></body>');
-  if(!html.includes('match-photo-option-v34.js')) html=html.replace('</body>','<script src="./match-photo-option-v34.js?v=57"></script></body>');
-  if(!html.includes('make-match-v35-ui.js')) html=html.replace('</body>','<script src="./make-match-v35-ui.js?v=57"></script></body>');
-  if(!html.includes('backup-v28.js')) html=html.replace('</body>','<script src="./backup-v28.js?v=57"></script></body>');
-  if(!html.includes('history-delete-v30.js')) html=html.replace('</body>','<script src="./history-delete-v30.js?v=57"></script></body>');
-  if(!html.includes('history-composer-v36.js')) html=html.replace('</body>','<script src="./history-composer-v36.js?v=57"></script></body>');
-  if(!html.includes('sender-fields-v39.js')) html=html.replace('</body>','<script src="./sender-fields-v39.js?v=57"></script></body>');
-  if(!html.includes('profile-contact-v40.js')) html=html.replace('</body>','<script src="./profile-contact-v40.js?v=57"></script></body>');
-  if(!html.includes('profile-required-v44.js')) html=html.replace('</body>','<script src="./profile-required-v44.js?v=57"></script></body>');
-  if(!html.includes('feature-request-v46.js')) html=html.replace('</body>','<script src="./feature-request-v46.js?v=57"></script></body>');
-  if(!html.includes('profile-display-v48.js')) html=html.replace('</body>','<script src="./profile-display-v48.js?v=57"></script></body>');
-  if(!html.includes('email-photo-v51.js')) html=html.replace('</body>','<script src="./email-photo-v51.js?v=57"></script></body>');
-  if(!html.includes('profile-share-v52.js')) html=html.replace('</body>','<script src="./profile-share-v52.js?v=57"></script></body>');
-  if(!html.includes('shadchan-share-v55.js')) html=html.replace('</body>','<script src="./shadchan-share-v55.js?v=57"></script></body>');
-  if(!html.includes('selection-layout-v54.js')) html=html.replace('</body>','<script src="./selection-layout-v54.js?v=57"></script></body>');
-  if(!html.includes('contact-actions-v56.js')) html=html.replace('</body>','<script src="./contact-actions-v56.js?v=57"></script></body>');
+  if(!html.includes('whatsapp-enhance.js')) html=html.replace('</body>','<script src="./whatsapp-enhance.js?v=58"></script></body>');
+  if(!html.includes('peermatch-v11.js')) html=html.replace('</body>','<script src="./peermatch-v11.js?v=58"></script></body>');
+  if(!html.includes('ui-v18.js')) html=html.replace('</body>','<script src="./ui-v18.js?v=58"></script></body>');
+  if(!html.includes('peermatch-v19.js')) html=html.replace('</body>','<script src="./peermatch-v19.js?v=58"></script></body>');
+  if(!html.includes('audio-v24.js')) html=html.replace('</body>','<script src="./audio-v24.js?v=58"></script></body>');
+  if(!html.includes('send-match-v27.js')) html=html.replace('</body>','<script src="./send-match-v27.js?v=58"></script></body>');
+  if(!html.includes('make-match-v32.js')) html=html.replace('</body>','<script src="./make-match-v32.js?v=58"></script></body>');
+  if(!html.includes('match-text-required-v33.js')) html=html.replace('</body>','<script src="./match-text-required-v33.js?v=58"></script></body>');
+  if(!html.includes('match-photo-option-v34.js')) html=html.replace('</body>','<script src="./match-photo-option-v34.js?v=58"></script></body>');
+  if(!html.includes('make-match-v35-ui.js')) html=html.replace('</body>','<script src="./make-match-v35-ui.js?v=58"></script></body>');
+  if(!html.includes('backup-v28.js')) html=html.replace('</body>','<script src="./backup-v28.js?v=58"></script></body>');
+  if(!html.includes('history-delete-v30.js')) html=html.replace('</body>','<script src="./history-delete-v30.js?v=58"></script></body>');
+  if(!html.includes('history-composer-v36.js')) html=html.replace('</body>','<script src="./history-composer-v36.js?v=58"></script></body>');
+  if(!html.includes('sender-fields-v39.js')) html=html.replace('</body>','<script src="./sender-fields-v39.js?v=58"></script></body>');
+  if(!html.includes('profile-contact-v40.js')) html=html.replace('</body>','<script src="./profile-contact-v40.js?v=58"></script></body>');
+  if(!html.includes('profile-required-v44.js')) html=html.replace('</body>','<script src="./profile-required-v44.js?v=58"></script></body>');
+  if(!html.includes('feature-request-v46.js')) html=html.replace('</body>','<script src="./feature-request-v46.js?v=58"></script></body>');
+  if(!html.includes('profile-display-v48.js')) html=html.replace('</body>','<script src="./profile-display-v48.js?v=58"></script></body>');
+  if(!html.includes('email-photo-v51.js')) html=html.replace('</body>','<script src="./email-photo-v51.js?v=58"></script></body>');
+  if(!html.includes('profile-share-v52.js')) html=html.replace('</body>','<script src="./profile-share-v52.js?v=58"></script></body>');
+  if(!html.includes('shadchan-share-v55.js')) html=html.replace('</body>','<script src="./shadchan-share-v55.js?v=58"></script></body>');
+  if(!html.includes('selection-layout-v54.js')) html=html.replace('</body>','<script src="./selection-layout-v54.js?v=58"></script></body>');
+  if(!html.includes('contact-actions-v56.js')) html=html.replace('</body>','<script src="./contact-actions-v56.js?v=58"></script></body>');
   const headers=new Headers(response.headers);
   headers.set('content-type','text/html; charset=utf-8');
   headers.delete('content-length');
@@ -91,7 +91,7 @@ self.addEventListener('fetch',e=>{
     e.respondWith((async()=>{
       try{
         await saveShare(e.request);
-        return Response.redirect('./?pmv=57&shared=1',303);
+        return Response.redirect('./?pmv=58&shared=1',303);
       }catch(err){
         return new Response('Import failed',{status:500});
       }
