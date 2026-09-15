@@ -1,6 +1,6 @@
-/* PeerMatch v45: required profile field without mutation-observer loops. */
+/* PeerMatch v62: require some profile content without blocking image-only profiles. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='45';
+  document.documentElement.dataset.peerMatchVersion='62';
 
   function setLabelTextOnce(label,text,key){
     if(!label||label.dataset[key]==='1')return;
@@ -20,7 +20,7 @@
     }
 
     if(profile){
-      setLabelTextOnce(profile.closest('label'),'Profile (required)','pmv45ProfileLabel');
+      setLabelTextOnce(profile.closest('label'),'Profile','pmv45ProfileLabel');
       if(profile.placeholder!=='Paste, type, or record the profile')profile.placeholder='Paste, type, or record the profile';
     }
 
@@ -31,10 +31,11 @@
         const audioBtn=document.getElementById('v19ProfileAudio');
         const audioState=String(audioBtn?.textContent||'').trim();
         const hasOrSavingAudio=/Replace audio|Audio saved|Stop audio|Saving audio/i.test(audioState);
-        if(text||hasOrSavingAudio)return;
+        const hasImage=!!document.querySelector('#v19Media img');
+        if(text||hasOrSavingAudio||hasImage)return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        alert('Paste, type, or record the profile before saving.');
+        alert('Add profile text, audio, or a photo/screenshot before saving.');
         try{profile.focus();}catch(err){}
       },true);
     }
