@@ -9,10 +9,69 @@
       font-weight:800!important;
       text-decoration:none!important;
       cursor:pointer!important;
-      white-space:nowrap
+      white-space:normal!important
     }
     #sheet .pmV69PhoneLink:active{text-decoration:underline!important}
     #sheet .pmV69ShadPhone{margin:6px 0 10px;padding:7px 9px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;font-size:12px}
+
+    /* Contact person display: Name, phone, gap, Name, phone. Never side-by-side. */
+    #sheet .pmV67ContactPeople{
+      display:block!important;
+      margin:7px 0 12px!important;
+    }
+    #sheet .pmV67ContactLine{
+      display:block!important;
+      grid-template-columns:none!important;
+      padding:6px 2px!important;
+      border:0!important;
+      border-radius:0!important;
+      background:transparent!important;
+      min-width:0!important;
+    }
+    #sheet .pmV67ContactLine + .pmV67ContactLine{
+      margin-top:12px!important;
+    }
+    #sheet .pmV67ContactName{
+      display:block!important;
+      width:100%!important;
+      font-weight:800!important;
+      line-height:1.3!important;
+      overflow-wrap:anywhere!important;
+    }
+    #sheet .pmV67ContactPhone,
+    #sheet a.pmV67ContactPhone{
+      display:block!important;
+      width:max-content!important;
+      max-width:100%!important;
+      margin-top:3px!important;
+      line-height:1.35!important;
+      white-space:normal!important;
+    }
+
+    /* Add/Edit profile contact fields use the same vertical order. */
+    #sheet .v19Source.v39SenderGrid{
+      display:block!important;
+      grid-template-columns:none!important;
+    }
+    #sheet .v19Source.v39SenderGrid > label{
+      display:block!important;
+      width:100%!important;
+      margin:6px 0 8px!important;
+    }
+    #sheet .pmV67ContactFormRow{
+      display:block!important;
+      grid-template-columns:none!important;
+      margin:14px 0 2px!important;
+    }
+    #sheet .pmV67ContactFormRow label{
+      display:block!important;
+      width:100%!important;
+      margin:6px 0 8px!important;
+    }
+    #sheet .pmV67ContactFormRow input,
+    #sheet .v19Source.v39SenderGrid input{
+      width:100%!important;
+    }
   `;
   document.head.appendChild(css);
 
@@ -46,7 +105,6 @@
   function removeObviousSelfLinks(){
     const sheet=document.getElementById('sheet');if(!sheet)return;
 
-    // On a Shadchan page, remove a linked Guy/Girl button when it has the same name as the Shadchan.
     const shName=norm(shadchanNameFromDetail());
     if(shName){
       for(const box of sheet.querySelectorAll('.pmV64ReverseLinks')){
@@ -62,7 +120,6 @@
       }
     }
 
-    // On a Guy/Girl profile, suppress an auto-linked Shadchan when the displayed Shadchan name is the same as the profile name.
     const profileName=norm(document.querySelector('#sheet .v19Head h2')?.textContent||'');
     if(profileName){
       for(const box of sheet.querySelectorAll('.pmV64ProfileLink')){
