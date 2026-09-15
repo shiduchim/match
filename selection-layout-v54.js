@@ -1,7 +1,8 @@
-/* PeerMatch v54: cleaner selected-profile action layout.
+/* PeerMatch v55: cleaner selected-item action layout.
    Row 1: selected count + Select all
    Row 2: Email | SMS | WhatsApp
    Row 3: Delete | Clear, visually separated from sharing actions.
+   Applies to Guys, Girls, and Shadchanim.
 */
 (function(){
   const style=document.createElement('style');
@@ -94,7 +95,11 @@
     bar.classList.add('pmOrganizedSelection');
   }
 
-  function organizeAll(){organize('guys');organize('girls');}
+  function organizeAll(){
+    organize('guys');
+    organize('girls');
+    organize('shadchanim');
+  }
 
   let queued=false;
   function schedule(){
