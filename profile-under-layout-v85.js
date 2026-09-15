@@ -1,11 +1,11 @@
-/* PeerMatch v86: contact person + action buttons above profile; attachment/tags/religious level below. */
+/* PeerMatch v91: stable profile layout; contact/actions above profile, quick details below without observer fighting. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='86';
+  document.documentElement.dataset.peerMatchVersion='91';
 
   const style=document.createElement('style');
   style.textContent=`
     #sheet .pmV85ProfileAttachment{
-      margin:7px 0!important;
+      margin:0 0 7px!important;
       padding:0!important;
       border:0!important;
       background:transparent!important
@@ -35,7 +35,7 @@
     const profileCard=profileText?.closest('.card');
     if(!profileCard)return;
 
-    /* Keep contact person and the four action buttons together directly above the profile. */
+    /* Contact person and action buttons stay together immediately above the profile. */
     const contact=sheet.querySelector('.pmV74ContactSummary');
     const buttons=sheet.querySelector('.pmProfileContact');
     if(contact){
@@ -46,22 +46,19 @@
       profileCard.insertAdjacentElement('beforebegin',buttons);
     }
 
-    /* Everything below here belongs under the profile text. */
-    let anchor=profileCard;
+    /* ux-v65 owns placement of .pmInlineTools. Do not move the whole tools box here.
+       Keeping one owner prevents the old move/move-back loop that made fields unclickable. */
+    const tools=sheet.querySelector('.pmInlineTools');
+    if(tools)tools.classList.add('pmV85ProfileTools');
 
+    /* Put the attachment inside the stable tools box, above Tags. */
     const attachment=sheet.querySelector('.pmV63Attachment:not(.pmV67ShadAttachment)');
-    if(attachment){
+    if(attachment&&tools){
       attachment.classList.add('pmV85ProfileAttachment');
       const btn=attachment.querySelector('button');
       if(btn)btn.textContent='PDF / screenshot attached';
-      if(anchor.nextElementSibling!==attachment)anchor.insertAdjacentElement('afterend',attachment);
-      anchor=attachment;
-    }
-
-    const tools=sheet.querySelector('.pmInlineTools');
-    if(tools){
-      tools.classList.add('pmV85ProfileTools');
-      if(anchor.nextElementSibling!==tools)anchor.insertAdjacentElement('afterend',tools);
+      const first=tools.firstElementChild;
+      if(first!==attachment)tools.insertBefore(attachment,first);
     }
   }
 
