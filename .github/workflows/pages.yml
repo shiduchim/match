@@ -62,8 +62,8 @@ jobs:
               'history-delete-v30.js',
               'history-composer-v36.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=36"></script>' for name in scripts)
-          if 'history-composer-v36.js?v=36' not in html:
+          tags = ''.join(f'<script src="./{name}?v=37"></script>' for name in scripts)
+          if 'history-composer-v36.js?v=37' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
