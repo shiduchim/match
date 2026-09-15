@@ -75,9 +75,10 @@ jobs:
               'whatsapp-import-v61.js',
               'profile-tools-v62.js',
               'profile-pdf-ocr-v63.js',
+              'phone-links-v64.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=63"></script>' for name in scripts)
-          if 'profile-pdf-ocr-v63.js?v=63' not in html:
+          tags = ''.join(f'<script src="./{name}?v=64"></script>' for name in scripts)
+          if 'phone-links-v64.js?v=64' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
