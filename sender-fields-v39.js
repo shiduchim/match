@@ -1,6 +1,6 @@
-/* PeerMatch v39: one Sender section with optional name, phone and email for Guy/Girl profiles. */
+/* PeerMatch: one Contact person section with optional name, phone and email for Guy/Girl profiles. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='39';
+  document.documentElement.dataset.peerMatchVersion='43';
 
   let activeProfile=null;
 
@@ -49,14 +49,14 @@
         const x=(data[k]||[]).find(z=>!beforeIds.has(String(z.id)));
         if(x&&!formStillHere){
           x.sourceEmail=email;
-          try{await save();renderP(k);}catch(e){console.warn('PeerMatch v39 sender email save',e);}
+          try{await save();renderP(k);}catch(e){console.warn('PeerMatch contact email save',e);}
           return;
         }
       }else{
         const x=record(k,id);
         if(x&&!formStillHere){
           x.sourceEmail=email;
-          try{await save();renderP(k);}catch(e){console.warn('PeerMatch v39 sender email save',e);}
+          try{await save();renderP(k);}catch(e){console.warn('PeerMatch contact email save',e);}
           addEmailPill(k,id);
           return;
         }
@@ -78,7 +78,7 @@
 
     const title=document.createElement('div');
     title.className='v39SenderTitle';
-    title.innerHTML='Sender <span>(optional)</span>';
+    title.textContent='Contact person';
     grid.insertAdjacentElement('beforebegin',title);
 
     const emailLabel=document.createElement('label');
