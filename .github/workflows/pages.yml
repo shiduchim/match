@@ -64,8 +64,8 @@ jobs:
               'sender-fields-v39.js',
               'profile-contact-v40.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=40"></script>' for name in scripts)
-          if 'profile-contact-v40.js?v=40' not in html:
+          tags = ''.join(f'<script src="./{name}?v=41"></script>' for name in scripts)
+          if 'profile-contact-v40.js?v=41' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
