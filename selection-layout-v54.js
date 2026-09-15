@@ -1,8 +1,8 @@
-/* PeerMatch v56: clear forwarding layout for selected Guys, Girls, and Shadchanim.
+/* PeerMatch v57: compact, consistent forwarding layout for selected items.
    - Guys/Girls heading: Share this profile.
    - Shadchanim heading: Share this shadchan.
-   - Email | SMS | WhatsApp are the main, slightly taller share buttons.
-   - Selected count | Select all | Delete | Clear stay together on the bottom row.
+   - Email | SMS | WhatsApp use the same blue button style and slightly shorter height.
+   - Selected count | Select all | Delete | Clear always stay together on one bottom row.
 */
 (function(){
   const style=document.createElement('style');
@@ -20,57 +20,61 @@
     .pmSelShare{
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:8px;
+      gap:7px;
     }
     .pmSelShare button{
       width:100%!important;
       min-width:0;
-      min-height:44px!important;
+      min-height:39px!important;
       margin:0!important;
-      padding:10px 6px!important;
-      border-radius:11px!important;
-      font-size:12px!important;
+      padding:8px 5px!important;
+      border-radius:10px!important;
+      font-size:11.5px!important;
       font-weight:800!important;
       color:#19324a!important;
+      background:#dfeef9!important;
     }
-    .pmChannelEmail{background:#dfeef9!important}
-    .pmChannelSms{background:#d2e6f4!important}
-    .pmChannelWhatsApp{background:#c3dcf0!important}
+    .pmChannelEmail,.pmChannelSms,.pmChannelWhatsApp{background:#dfeef9!important}
     .pmSelManage{
-      display:grid;
-      grid-template-columns:auto repeat(3,minmax(0,1fr));
-      align-items:center;
-      gap:6px;
-      margin-top:9px;
-      padding-top:9px;
+      display:flex!important;
+      flex-wrap:nowrap!important;
+      align-items:center!important;
+      gap:5px!important;
+      margin-top:8px;
+      padding-top:8px;
       border-top:1px solid var(--line);
+      min-width:0;
     }
     .pmSelManage .pmCount{
       margin:0!important;
-      padding:0 3px 0 1px;
-      font-size:11px!important;
+      padding:0 2px 0 0!important;
+      flex:0 0 auto!important;
+      font-size:10px!important;
       font-weight:800;
       color:var(--muted);
-      white-space:nowrap;
+      white-space:nowrap!important;
     }
     .pmSelManage button{
-      width:100%!important;
-      min-width:0;
+      flex:1 1 0!important;
+      width:auto!important;
+      min-width:0!important;
       margin:0!important;
-      padding:7px 5px!important;
-      min-height:34px!important;
+      padding:7px 2px!important;
+      min-height:32px!important;
       border-radius:9px!important;
-      font-size:10.5px!important;
+      font-size:9.5px!important;
+      line-height:1.05!important;
       font-weight:800!important;
+      white-space:nowrap!important;
     }
     .pmSelManage .pmSelectAllBtn{background:#e8f1f7!important;color:#274b64!important}
     .pmSelManage .pmDanger{background:#fbe7e7!important;color:#8a2929!important}
     @media(max-width:390px){
-      .pmSelShare{gap:6px}
-      .pmSelShare button{font-size:11.5px!important;padding:9px 4px!important}
-      .pmSelManage{gap:4px}
-      .pmSelManage .pmCount{font-size:10px!important}
-      .pmSelManage button{font-size:9.5px!important;padding:7px 3px!important}
+      .pmSelShare{gap:5px}
+      .pmSelShare button{font-size:11px!important;padding:8px 3px!important;min-height:38px!important}
+      .pmSelManage{gap:3px!important}
+      .pmSelManage .pmCount{font-size:9px!important}
+      .pmSelManage button{font-size:8.8px!important;padding:7px 1px!important}
     }
   `;
   document.head.appendChild(style);
@@ -140,7 +144,6 @@
     manage.appendChild(del);
     manage.appendChild(clear);
 
-    // Remove the previous v54 header if it is still present after the count moved.
     const oldHeader=bar.querySelector('.pmSelHeader');
     if(oldHeader&&!oldHeader.children.length)oldHeader.remove();
 
