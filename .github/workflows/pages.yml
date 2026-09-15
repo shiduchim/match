@@ -65,8 +65,8 @@ jobs:
               'profile-contact-v40.js',
               'profile-required-v44.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=44"></script>' for name in scripts)
-          if 'profile-required-v44.js?v=44' not in html:
+          tags = ''.join(f'<script src="./{name}?v=45"></script>' for name in scripts)
+          if 'profile-required-v44.js?v=45' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
