@@ -23,14 +23,58 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Build first-load PeerMatch page
+        shell: python
+        run: |
+          from pathlib import Path
+          import shutil
+
+          root = Path('.')
+          site = Path('_site')
+          if site.exists():
+              shutil.rmtree(site)
+          site.mkdir()
+
+          for item in root.iterdir():
+              if item.name in {'.git', '.github', '_site'}:
+                  continue
+              dest = site / item.name
+              if item.is_dir():
+                  shutil.copytree(item, dest)
+              else:
+                  shutil.copy2(item, dest)
+
+          index = site / 'index.html'
+          html = index.read_text(encoding='utf-8')
+          scripts = [
+              'whatsapp-enhance.js',
+              'peermatch-v11.js',
+              'ui-v18.js',
+              'peermatch-v19.js',
+              'audio-v24.js',
+              'send-match-v27.js',
+              'make-match-v32.js',
+              'match-text-required-v33.js',
+              'match-photo-option-v34.js',
+              'backup-v28.js',
+              'history-delete-v30.js',
+          ]
+          tags = ''.join(f'<script src="./{name}?v=34"></script>' for name in scripts)
+          if 'match-photo-option-v34.js?v=34' not in html:
+              html = html.replace('</body>', tags + '</body>')
+          index.write_text(html, encoding='utf-8')
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: '.'
+          path: '_site'
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
