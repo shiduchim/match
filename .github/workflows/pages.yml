@@ -72,8 +72,8 @@ jobs:
               'selection-layout-v54.js',
               'contact-actions-v56.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=58"></script>' for name in scripts)
-          if 'contact-actions-v56.js?v=58' not in html:
+          tags = ''.join(f'<script src="./{name}?v=59"></script>' for name in scripts)
+          if 'contact-actions-v56.js?v=59' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
