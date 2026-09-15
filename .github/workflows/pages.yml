@@ -70,9 +70,10 @@ jobs:
               'profile-share-v52.js',
               'shadchan-share-v55.js',
               'selection-layout-v54.js',
+              'contact-actions-v56.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=55"></script>' for name in scripts)
-          if 'shadchan-share-v55.js?v=55' not in html:
+          tags = ''.join(f'<script src="./{name}?v=56"></script>' for name in scripts)
+          if 'contact-actions-v56.js?v=56' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
