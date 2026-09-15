@@ -1,16 +1,16 @@
-/* PeerMatch v81: reliable manual linked-Shadchan dropdown below the profile text. */
+/* PeerMatch v91: reliable manual linked-Shadchan dropdown below stable profile tools. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='81';
+  document.documentElement.dataset.peerMatchVersion='91';
   let active=null,queued=false;
 
   const css=document.createElement('style');
   css.textContent=`
     #sheet .pmV64ProfileLink,#sheet .pmV65ProfileLinks{display:none!important}
-    #sheet .pmV75LinkedShadchan{margin:7px 0 11px;padding:9px 10px;border:1px solid #d7e2e9;border-radius:11px;background:#f7fafc}
+    #sheet .pmV75LinkedShadchan{margin:7px 0 11px;padding:9px 10px;border:1px solid #d7e2e9;border-radius:11px;background:#f7fafc;position:relative!important;z-index:8!important;pointer-events:auto!important}
     #sheet .pmV75LinkedTitle{font-size:11px;font-weight:850;color:var(--muted);margin-bottom:6px}
-    #sheet .pmV78LinkedRow{display:flex;align-items:center;gap:7px;min-width:0}
-    #sheet .pmV78LinkedSelect{flex:1;min-width:0;width:100%;padding:9px 10px;border:1px solid #ccd9e2;border-radius:10px;background:#fff;color:var(--text);font:inherit;font-size:12px;font-weight:750}
-    #sheet .pmV78OpenLinked{flex:0 0 auto;width:auto!important;padding:8px 10px!important;border-radius:9px!important;font-size:11px!important;font-weight:850!important}
+    #sheet .pmV78LinkedRow{display:flex;align-items:center;gap:7px;min-width:0;position:relative!important;z-index:9!important}
+    #sheet .pmV78LinkedSelect{flex:1;min-width:0;width:100%;padding:9px 10px;border:1px solid #ccd9e2;border-radius:10px;background:#fff;color:var(--text);font:inherit;font-size:12px;font-weight:750;pointer-events:auto!important;touch-action:manipulation!important;position:relative!important;z-index:10!important}
+    #sheet .pmV78OpenLinked{flex:0 0 auto;width:auto!important;padding:8px 10px!important;border-radius:9px!important;font-size:11px!important;font-weight:850!important;pointer-events:auto!important;touch-action:manipulation!important;position:relative!important;z-index:10!important}
     #sheet .pmV78LinkedStatus{margin-top:5px;font-size:10.5px;color:var(--muted)}
   `;
   document.head.appendChild(css);
@@ -64,13 +64,17 @@
       setTimeout(()=>{if(status.isConnected)status.textContent='';},1100);
       return true;
     }catch(e){
-      console.warn('PeerMatch v81 linked Shadchan save',e);
+      console.warn('PeerMatch v91 linked Shadchan save',e);
       status.textContent='Could not save. Try again.';
       return false;
     }
   }
 
   function placeBox(sheet,box){
+    /* Keep this after the whole quick-details block so it no longer competes
+       with Tags/Religious level for the same next-sibling position. */
+    const tools=sheet.querySelector('.pmInlineTools');
+    if(tools){if(tools.nextElementSibling!==box)tools.insertAdjacentElement('afterend',box);return;}
     const card=sheet.querySelector('.card');
     if(card){if(card.nextElementSibling!==box)card.insertAdjacentElement('afterend',box);return;}
     const head=sheet.querySelector('.v19Head');
@@ -100,6 +104,11 @@
     const openBtn=document.createElement('button');openBtn.type='button';openBtn.className='secondary pmV78OpenLinked';openBtn.textContent='Open';openBtn.hidden=!current;
     openBtn.onclick=()=>{const s=(data.shadchanim||[]).find(z=>String(z.id)===String(select.value));if(s)openS(s.id);};
     const status=document.createElement('div');status.className='pmV78LinkedStatus';
+
+    for(const el of [select,openBtn]){
+      el.addEventListener('pointerdown',e=>e.stopPropagation());
+      el.addEventListener('click',e=>e.stopPropagation());
+    }
 
     select.addEventListener('change',async()=>{
       select.disabled=true;openBtn.disabled=true;
