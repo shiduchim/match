@@ -1,6 +1,6 @@
-/* PeerMatch v35: compact Make Match action row + selectable call recipient. */
+/* PeerMatch v42: compact Make Match action row + selectable call recipient, with idempotent observer updates. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='35';
+  document.documentElement.dataset.peerMatchVersion='42';
 
   const style=document.createElement('style');
   style.textContent=`
@@ -83,10 +83,14 @@
     const target=targets[Math.max(0,Number(sel?.value||0))]||targets[0];
     addCallHistory(guy,girl,shadchan,target);
     try{await save();}
-    catch(e){console.warn('PeerMatch v35 call history save',e);return alert('PeerMatch could not save the call in history, so the call was not opened.');}
+    catch(e){console.warn('PeerMatch v42 call history save',e);return alert('PeerMatch could not save the call in history, so the call was not opened.');}
     try{render();}catch(e){}
     close();
     location.href='tel:'+target.phone;
+  }
+
+  function targetSignature(targets){
+    return targets.map(t=>[t.label,t.name,t.phone,t.side].join('|')).join('||');
   }
 
   function install(){
@@ -102,9 +106,9 @@
     }
 
     const guys=checkedRecords('guys'),girls=checkedRecords('girls'),shads=checkedRecords('shadchanim');
+    let wrap=document.getElementById('pmCallChoice');
     if(guys.length===1&&girls.length===1){
       const targets=callTargets(guys[0],girls[0],shads[0]||null);
-      let wrap=document.getElementById('pmCallChoice');
       if(targets.length>1){
         if(!wrap){
           wrap=document.createElement('label');
@@ -112,16 +116,34 @@
           wrap.className='pmCallChoice';
           actions.parentNode.insertBefore(wrap,actions);
         }
-        wrap.innerHTML='Call <select id="pmCallRecipient">'+targets.map((t,i)=>`<option value="${i}">${esc(t.label+(t.name&&t.name!==t.label?' — '+t.name:'')+' • '+t.phone)}</option>`).join('')+'</select>';
-      }else if(wrap){wrap.remove();}
+        const sig=targetSignature(targets);
+        if(wrap.dataset.targets!==sig){
+          const current=Number(document.getElementById('pmCallRecipient')?.value||0);
+          wrap.innerHTML='Call <select id="pmCallRecipient">'+targets.map((t,i)=>`<option value="${i}">${esc(t.label+(t.name&&t.name!==t.label?' — '+t.name:'')+' • '+t.phone)}</option>`).join('')+'</select>';
+          wrap.dataset.targets=sig;
+          const sel=wrap.querySelector('#pmCallRecipient');
+          if(sel&&current>=0&&current<targets.length)sel.value=String(current);
+        }
+      }else if(wrap){
+        wrap.remove();
+      }
+    }else if(wrap){
+      wrap.remove();
     }
 
-    if(callBtn.dataset.pmv35!=='1'){
-      callBtn.dataset.pmv35='1';
+    if(callBtn.dataset.pmv42!=='1'){
+      callBtn.dataset.pmv42='1';
       callBtn.onclick=e=>{e.preventDefault();e.stopPropagation();doCall();};
     }
   }
 
+  let scheduled=false;
+  function scheduleInstall(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(()=>{scheduled=false;install();});
+  }
+
   install();
-  new MutationObserver(install).observe(document.body,{childList:true,subtree:true});
+  new MutationObserver(scheduleInstall).observe(document.body,{childList:true,subtree:true});
 })();
