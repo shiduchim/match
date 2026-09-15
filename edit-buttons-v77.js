@@ -1,6 +1,6 @@
-/* PeerMatch v77: matching compact Edit buttons. */
+/* PeerMatch v81: matching compact Edit buttons in the top profile headers. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='77';
+  document.documentElement.dataset.peerMatchVersion='81';
 
   const style=document.createElement('style');
   style.textContent=`
@@ -12,7 +12,7 @@
       width:auto!important;
       min-width:58px!important;
       min-height:36px!important;
-      margin:7px 0 9px!important;
+      margin:0!important;
       padding:8px 12px!important;
       border-radius:9px!important;
       border:0!important;
@@ -22,11 +22,10 @@
       font-weight:850!important;
       line-height:1!important;
       box-shadow:none!important;
+      flex:0 0 auto!important
     }
-    #sheet .v19ShadHead #v19EditShad{
-      flex:0 0 auto!important;
-      margin:0!important;
-    }
+    #sheet .v19Head,#sheet .v19ShadHead{align-items:flex-start!important}
+    #sheet .v19Head #v19EditProfile{align-self:flex-start!important}
   `;
   document.head.appendChild(style);
 
@@ -34,13 +33,12 @@
     const sheet=document.getElementById('sheet');if(!sheet)return;
 
     const editProfile=sheet.querySelector('#v19EditProfile');
-    if(editProfile){
+    const profileHead=sheet.querySelector('.v19Head');
+    if(editProfile&&profileHead&&!sheet.querySelector('.v19ShadHead')){
       editProfile.textContent='Edit';
       editProfile.classList.remove('full');
-      const card=sheet.querySelector('.card');
-      if(card&&card.nextElementSibling!==editProfile){
-        card.insertAdjacentElement('afterend',editProfile);
-      }
+      /* Put Edit on the same top row as the profile name/photo, like the Shadchan header. */
+      if(editProfile.parentElement!==profileHead)profileHead.appendChild(editProfile);
     }
 
     const editShad=sheet.querySelector('#v19EditShad');
