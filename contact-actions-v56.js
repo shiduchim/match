@@ -1,7 +1,7 @@
-/* PeerMatch v56: clarify direct-contact actions inside profile and shadchan details.
+/* PeerMatch v57: clear direct-contact actions inside profile and shadchan details.
    - Guy/Girl profile: Contact person.
    - Shadchan detail: Contact shadchan.
-   - Call | Email | SMS | WhatsApp use one consistent blue button system.
+   - Call | Email | SMS | WhatsApp all use the same blue button style.
 */
 (function(){
   const style=document.createElement('style');
@@ -21,21 +21,19 @@
     .pmUnifiedContact button{
       width:100%!important;
       min-width:0;
-      min-height:40px!important;
-      padding:9px 3px!important;
+      min-height:39px!important;
+      padding:8px 3px!important;
       border-radius:10px!important;
       font-size:10.5px!important;
       font-weight:800!important;
       color:#19324a!important;
       border:0!important;
+      background:#dfeef9!important;
     }
-    .pmChannelCall{background:#edf4fa!important}
-    .pmChannelEmail{background:#dfeef9!important}
-    .pmChannelSms{background:#d2e6f4!important}
-    .pmChannelWhatsApp{background:#c3dcf0!important}
+    .pmChannelCall,.pmChannelEmail,.pmChannelSms,.pmChannelWhatsApp{background:#dfeef9!important}
     @media(max-width:380px){
       .pmUnifiedContact{gap:4px!important}
-      .pmUnifiedContact button{font-size:9.5px!important;padding:8px 2px!important}
+      .pmUnifiedContact button{font-size:9.5px!important;padding:8px 2px!important;min-height:38px!important}
     }
   `;
   document.head.appendChild(style);
