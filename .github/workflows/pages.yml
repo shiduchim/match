@@ -66,9 +66,10 @@ jobs:
               'profile-required-v44.js',
               'feature-request-v46.js',
               'profile-display-v48.js',
+              'email-photo-v51.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=50"></script>' for name in scripts)
-          if 'profile-display-v48.js?v=50' not in html:
+          tags = ''.join(f'<script src="./{name}?v=51"></script>' for name in scripts)
+          if 'email-photo-v51.js?v=51' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
