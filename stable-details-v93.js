@@ -1,6 +1,6 @@
-/* PeerMatch v93: stable detail editor that is never reparented while typing. */
+/* PeerMatch v94: stable detail editor that is never reparented while typing. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='93';
+  document.documentElement.dataset.peerMatchVersion='94';
   let active=null,queued=false;
 
   const style=document.createElement('style');
@@ -49,8 +49,8 @@
   const current=()=>active?rec(active.k,active.id):null;
 
   function saveQuiet(){
-    try{const p=save();if(p?.catch)p.catch(e=>console.warn('PeerMatch v93 save',e));}
-    catch(e){console.warn('PeerMatch v93 save',e);}
+    try{const p=save();if(p?.catch)p.catch(e=>console.warn('PeerMatch v94 save',e));}
+    catch(e){console.warn('PeerMatch v94 save',e);}
   }
 
   function isDetail(sheet){
@@ -100,7 +100,7 @@
 
     const relRow=document.createElement('label');relRow.className='pmV93Field';
     const relLabel=document.createElement('span');relLabel.textContent='Religious level';
-    const rel=document.createElement('input');rel.type='number';rel.min='0';rel.max='10';rel.inputMode='numeric';rel.value=x.religiousLevel==null?'':String(x.religiousLevel);rel.placeholder='0-10';
+    const rel=document.createElement('input');rel.type='text';rel.autocomplete='off';rel.value=x.religiousLevel==null?'':String(x.religiousLevel);rel.placeholder='e.g. 7, Chabad, Yeshivish';
     relRow.append(relLabel,rel);box.appendChild(relRow);
 
     stop(tags);stop(rel);
