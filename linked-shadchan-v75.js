@@ -1,6 +1,6 @@
-/* PeerMatch v78: reliable manual linked-Shadchan dropdown directly under Edit Profile. */
+/* PeerMatch v81: reliable manual linked-Shadchan dropdown below the profile text. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='78';
+  document.documentElement.dataset.peerMatchVersion='81';
   let active=null,queued=false;
 
   const css=document.createElement('style');
@@ -46,7 +46,6 @@
     const s=value===''?null:(data.shadchanim||[]).find(z=>String(z.id)===String(value))||null;
     if(value!==''&&!s){status.textContent='That Shadchan could not be found.';return false;}
 
-    // Dedicated manual field is authoritative. Keep sourceShadchanId in sync for old code.
     x.linkedShadchanManual=true;
     x.linkedShadchanId=s?s.id:null;
     x.sourceShadchanId=s?s.id:null;
@@ -54,7 +53,6 @@
     status.textContent='Saving…';
     try{
       await save();
-      // Verify the value reached IndexedDB; retry the direct state write if necessary.
       if(typeof get==='function'){
         const saved=await get('kv','state');
         const row=(saved?.[active.k]||[]).find(z=>String(z.id)===String(active.id));
@@ -66,25 +64,29 @@
       setTimeout(()=>{if(status.isConnected)status.textContent='';},1100);
       return true;
     }catch(e){
-      console.warn('PeerMatch v78 linked Shadchan save',e);
+      console.warn('PeerMatch v81 linked Shadchan save',e);
       status.textContent='Could not save. Try again.';
       return false;
     }
   }
 
+  function placeBox(sheet,box){
+    const card=sheet.querySelector('.card');
+    if(card){if(card.nextElementSibling!==box)card.insertAdjacentElement('afterend',box);return;}
+    const head=sheet.querySelector('.v19Head');
+    if(head&&head.nextElementSibling!==box)head.insertAdjacentElement('afterend',box);
+  }
+
   function renderLink(){
-    const sheet=document.getElementById('sheet'),x=profile(),edit=sheet?.querySelector('#v19EditProfile');
-    if(!sheet||!x||!edit||!['guys','girls'].includes(active?.k))return;
+    const sheet=document.getElementById('sheet'),x=profile();
+    if(!sheet||!x||!['guys','girls'].includes(active?.k))return;
     sheet.querySelectorAll('.pmV64ProfileLink,.pmV65ProfileLinks').forEach(el=>el.remove());
 
     const arr=[...(data.shadchanim||[])].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
     const current=linkedShad(x);
     const sig=JSON.stringify([active.k,String(active.id),current?String(current.id):'',arr.map(s=>[String(s.id),String(s.name||'')])]);
     let box=sheet.querySelector('.pmV75LinkedShadchan');
-    if(box?.dataset.sig===sig){
-      if(edit.nextElementSibling!==box)edit.insertAdjacentElement('afterend',box);
-      return;
-    }
+    if(box?.dataset.sig===sig){placeBox(sheet,box);return;}
     if(box)box.remove();
 
     box=document.createElement('div');box.className='pmV75LinkedShadchan';box.dataset.sig=sig;
@@ -112,7 +114,7 @@
     });
 
     row.append(select,openBtn);box.append(title,row,status);
-    edit.insertAdjacentElement('afterend',box);
+    placeBox(sheet,box);
   }
 
   function polish(){
