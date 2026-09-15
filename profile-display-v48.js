@@ -2,7 +2,7 @@
    - Keep profile photos on the individual profile card/detail view, but hide them from Guy/Girl list views.
    - Render WhatsApp-style *bold* / **bold** in profile detail without changing stored text.
    - Hide literal * markers from Guy/Girl list display and profile title/name display.
-   - Keep Edit Profile above the profile text for easier access.
+   - Keep Edit Profile directly below the profile text.
 */
 (function(){
   const style=document.createElement('style');
@@ -42,9 +42,10 @@
       title.textContent=title.textContent.replace(/\*/g,'').trim();
     }
 
-    const firstProfileContent=sheet.querySelector('.card, .v19ProfileAudio, .sectionTitle');
-    if(firstProfileContent&&edit.nextElementSibling!==firstProfileContent){
-      firstProfileContent.insertAdjacentElement('beforebegin',edit);
+    // Keep Edit Profile directly under the profile text/card.
+    const profileCard=sheet.querySelector('.card:has(> .profileText)')||sheet.querySelector('.card');
+    if(profileCard&&profileCard.nextElementSibling!==edit){
+      profileCard.insertAdjacentElement('afterend',edit);
     }
 
     const profileText=sheet.querySelector('.card > .profileText');
