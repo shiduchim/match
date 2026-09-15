@@ -1,6 +1,6 @@
-/* PeerMatch v62: require some profile content without blocking image-only profiles. */
+/* PeerMatch v63: require some profile content without blocking attachment-only profiles. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='62';
+  document.documentElement.dataset.peerMatchVersion='63';
 
   function setLabelTextOnce(label,text,key){
     if(!label||label.dataset[key]==='1')return;
@@ -32,10 +32,11 @@
         const audioState=String(audioBtn?.textContent||'').trim();
         const hasOrSavingAudio=/Replace audio|Audio saved|Stop audio|Saving audio/i.test(audioState);
         const hasImage=!!document.querySelector('#v19Media img');
-        if(text||hasOrSavingAudio||hasImage)return;
+        const hasAttachment=typeof window.pmV63HasPendingAttachment==='function'&&window.pmV63HasPendingAttachment();
+        if(text||hasOrSavingAudio||hasImage||hasAttachment)return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        alert('Add profile text, audio, or a photo/screenshot before saving.');
+        alert('Add profile text, audio, a photo/screenshot, or a PDF attachment before saving.');
         try{profile.focus();}catch(err){}
       },true);
     }
