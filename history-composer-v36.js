@@ -1,6 +1,6 @@
-/* PeerMatch v38: WhatsApp-style History composer for Guy/Girl/Shadchan details. */
+/* PeerMatch v41: WhatsApp-style History composer for Guy/Girl/Shadchan details. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='38';
+  document.documentElement.dataset.peerMatchVersion='41';
 
   const MIC_ICON='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14.5a3.5 3.5 0 0 0 3.5-3.5V5a3.5 3.5 0 0 0-7 0v6a3.5 3.5 0 0 0 3.5 3.5Z"/><path d="M5.75 10.75a6.25 6.25 0 0 0 12.5 0M12 17v3.25M9.25 20.25h5.5"/></svg>';
   const SEND_ICON='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 16 8-16 8 3-8-3-8Z"/><path d="M7 12h13"/></svg>';
@@ -63,8 +63,8 @@
     const hasText=!!String(input.value||'').trim();
     button.className='pmChatAction'+(hasText?' pmSendMode':'');
     button.innerHTML=hasText?SEND_ICON:MIC_ICON;
-    button.setAttribute('aria-label',hasText?'Send message':'Record audio message');
-    button.title=hasText?'Send message':'Record audio message';
+    button.setAttribute('aria-label',hasText?'Save note':'Record audio note');
+    button.title=hasText?'Save note':'Record audio note';
   }
 
   async function stopAndSave(){
@@ -93,7 +93,7 @@
       });
     }catch(e){
       try{c.stream.getTracks().forEach(t=>t.stop());}catch(err){}
-      if(input){input.disabled=false;input.placeholder='Message…';}
+      if(input){input.disabled=false;input.placeholder='Note…';}
       if(btn){btn.disabled=false;drawAction(btn,input,false);}
       alert('The audio recording could not be saved. Please record again.');
       return;
@@ -104,7 +104,7 @@
     x.activities=x.activities||[];
     x.activities.push({id:Date.now(),type:'audio',audio:blob,ts:stamp()});
     try{await save();}catch(e){
-      if(input){input.disabled=false;input.placeholder='Message…';}
+      if(input){input.disabled=false;input.placeholder='Note…';}
       if(btn){btn.disabled=false;drawAction(btn,input,false);}
       return alert('PeerMatch could not save the audio note.');
     }
@@ -125,13 +125,13 @@
       recorder.start(500);
       capture=c;
       input.disabled=true;
-      input.placeholder='Recording audio…';
+      input.placeholder='Recording audio note…';
       button.disabled=false;
       drawAction(button,input,true);
     }catch(e){
       button.disabled=false;
       input.disabled=false;
-      input.placeholder='Message…';
+      input.placeholder='Note…';
       drawAction(button,input,false);
       alert('Microphone permission is required to record an audio note.');
     }
@@ -145,7 +145,7 @@
     x.activities=x.activities||[];
     x.activities.push({id:Date.now(),type:'text',text,ts:stamp()});
     try{await save();}
-    catch(e){button.disabled=false;return alert('PeerMatch could not save the message.');}
+    catch(e){button.disabled=false;return alert('PeerMatch could not save the note.');}
     input.value='';
     try{render();}catch(e){}
     if(k==='shadchanim')openS(id);else openP(k,id);
@@ -174,7 +174,7 @@
     document.getElementById('pmChatComposer')?.remove();
     const composer=document.createElement('div');
     composer.id='pmChatComposer';composer.className='pmChatComposer';
-    composer.innerHTML='<div class="pmChatBubble"><textarea id="pmChatInput" class="pmChatInput" rows="1" placeholder="Message…" aria-label="Message"></textarea></div><button id="pmChatAction" type="button" class="pmChatAction" aria-label="Record audio message"></button>';
+    composer.innerHTML='<div class="pmChatBubble"><textarea id="pmChatInput" class="pmChatInput" rows="1" placeholder="Note…" aria-label="Private note"></textarea></div><button id="pmChatAction" type="button" class="pmChatAction" aria-label="Record audio note"></button>';
     sheet.appendChild(composer);
 
     const input=document.getElementById('pmChatInput'),action=document.getElementById('pmChatAction');
