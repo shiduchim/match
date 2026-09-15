@@ -1,7 +1,7 @@
-/* PeerMatch v50: profile display polish.
+/* PeerMatch v55: profile display polish.
    - Keep profile photos on the individual profile card/detail view, but hide them from Guy/Girl list views.
    - Render WhatsApp-style *bold* / **bold** in profile detail without changing stored text.
-   - Hide literal * markers from Guy/Girl list display only.
+   - Hide literal * markers from Guy/Girl list display and profile title/name display.
    - Keep Edit Profile above the profile text for easier access.
 */
 (function(){
@@ -34,6 +34,13 @@
     const sheet=document.getElementById('sheet');
     const edit=document.getElementById('v19EditProfile');
     if(!sheet||!edit)return;
+
+    // Names copied from WhatsApp sometimes arrive as *Name* or **Name**.
+    // Never show formatting stars in the profile title tile.
+    const title=sheet.querySelector('.v19Head h2');
+    if(title&&(title.textContent||'').includes('*')){
+      title.textContent=title.textContent.replace(/\*/g,'').trim();
+    }
 
     const firstProfileContent=sheet.querySelector('.card, .v19ProfileAudio, .sectionTitle');
     if(firstProfileContent&&edit.nextElementSibling!==firstProfileContent){
