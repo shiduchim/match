@@ -1,5 +1,5 @@
-/* PeerMatch v49: profile display polish.
-   - Stronger face-focused crop in Guy/Girl list and detail thumbnails.
+/* PeerMatch v50: profile display polish.
+   - Keep profile photos on the individual profile card/detail view, but hide them from Guy/Girl list views.
    - Render WhatsApp-style *bold* / **bold** in profile detail without changing stored text.
    - Hide literal * markers from Guy/Girl list display only.
    - Keep Edit Profile above the profile text for easier access.
@@ -7,8 +7,7 @@
 (function(){
   const style=document.createElement('style');
   style.textContent=`
-    .pmFaceCrop{width:62px;height:62px;flex:0 0 62px;border-radius:14px;overflow:hidden;background:#edf0f1;display:block}
-    .pmFaceCrop img.photo{width:100%!important;height:100%!important;border-radius:0!important;object-fit:cover!important;object-position:50% 8%!important;transform:scale(1.52);transform-origin:50% 10%;display:block}
+    #guysList .photo,#girlsList .photo,#guysList .pmFaceCrop,#girlsList .pmFaceCrop{display:none!important}
     #v19DetailMedia{overflow:hidden}
     #v19DetailMedia img{object-position:50% 8%!important;transform:scale(1.42)!important;transform-origin:50% 10%!important}
     #v19EditProfile{margin:8px 0 10px}
@@ -56,15 +55,6 @@
     ['guysList','girlsList'].forEach(id=>{
       const list=document.getElementById(id);
       if(!list)return;
-
-      // Make the list photo feel like a headshot while keeping the stored/full image unchanged.
-      list.querySelectorAll('img.photo').forEach(img=>{
-        if(img.parentElement?.classList.contains('pmFaceCrop'))return;
-        const wrap=document.createElement('span');
-        wrap.className='pmFaceCrop';
-        img.parentNode.insertBefore(wrap,img);
-        wrap.appendChild(img);
-      });
 
       // WhatsApp formatting marks should never appear in the compact list view.
       list.querySelectorAll('.name,.small,.pmPill').forEach(el=>{
