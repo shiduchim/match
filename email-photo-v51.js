@@ -1,11 +1,11 @@
-/* PeerMatch v51: attach selected profile photos when using Email.
-   Browsers cannot add attachments to a mailto: link, so when selected Guy/Girl
-   profiles include photos, use the Android/Web Share sheet with the profile text
-   plus the original/full photo files. Choosing Gmail/Email there creates a message
-   with the photos attached. Text-only selections keep the existing mailto flow.
+/* PeerMatch v58: email selected profiles with photos when available.
+   - Photos use Web Share so Gmail/email apps can receive attachments.
+   - Text-only selections use mailto as before.
+   - Each selected profile gets a History entry when its Email share is opened/successfully handed off.
 */
 (function(){
   const tracked={guys:new Set(),girls:new Set()};
+  let historySeq=0;
 
   function senderName(x){return String(x?.sourceName||x?.source||'').trim();}
   function senderPhone(x){return String(x?.sourcePhone||'').trim();}
@@ -48,7 +48,6 @@
     let items=(data[k]||[]).filter(x=>tracked[k].has(x.id));
     if(items.length===n)return items;
 
-    // Recovery for any selection made before this helper saw the checkbox click.
     const list=document.getElementById(k+'List');
     if(!list)return null;
     const a=visible(k),cards=Array.from(list.children).filter(el=>el.classList?.contains('card'));
@@ -74,7 +73,23 @@
     return new File([blob],safeName(x?.name||('profile-'+(index+1)))+'.'+ext,{type});
   }
 
-  function mailto(subject,body){
+  async function recordEmailShare(items){
+    (items||[]).forEach(x=>{
+      x.activities=x.activities||[];
+      x.activities.push({
+        id:Date.now()*1000+(historySeq++%1000),
+        type:'action',
+        action:'Profile shared • Email',
+        text:'Profile sharing opened via Email.',
+        ts:stamp()
+      });
+    });
+    try{await save();}
+    catch(err){console.warn('PeerMatch could not save Email share history',err);}
+  }
+
+  function mailto(subject,body,items){
+    recordEmailShare(items);
     let u='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
     if(u.length>16000){
       navigator.clipboard?.writeText(body).catch(()=>{});
@@ -83,18 +98,19 @@
     location.href=u;
   }
 
-  async function emailWithPhotos(k,items){
+  async function emailProfiles(items){
     const subject='PeerMatch selected profiles';
     const body=items.map(recordText).join('\n\n--------------------\n\n');
     const files=items.map((x,i)=>asFile(fullPhoto(x),x,i)).filter(Boolean);
 
-    if(!files.length){mailto(subject,body);return;}
+    if(!files.length){mailto(subject,body,items);return;}
 
     const payload={title:subject,text:body,files};
     const canShare=typeof navigator.share==='function'&&(!navigator.canShare||navigator.canShare({files}));
     if(canShare){
       try{
         await navigator.share(payload);
+        await recordEmailShare(items);
         return;
       }catch(err){
         if(err?.name==='AbortError')return;
@@ -103,7 +119,7 @@
     }
 
     alert('This browser cannot attach the photo automatically. PeerMatch will open the email with the profile text instead.');
-    mailto(subject,body);
+    mailto(subject,body,items);
   }
 
   document.addEventListener('click',e=>{
@@ -134,10 +150,10 @@
     if(k!=='guys'&&k!=='girls')return;
 
     const items=selectedItems(k);
-    if(!items||!items.some(x=>fullPhoto(x)))return; // keep original Email behavior if no usable photo.
+    if(!items||!items.length)return;
 
     e.preventDefault();
     e.stopImmediatePropagation();
-    emailWithPhotos(k,items);
+    emailProfiles(items);
   },true);
 })();
