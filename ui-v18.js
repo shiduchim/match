@@ -1,4 +1,4 @@
-/* PeerMatch v18 UI polish and v19 self-upgrade hook. */
+/* PeerMatch v18 UI polish. Legacy v19 self-loader removed: current versions are loaded explicitly by the Pages build/service worker. */
 (function(){
   if(!document.documentElement.dataset.peerMatchVersion)document.documentElement.dataset.peerMatchVersion='18';
   const style=document.createElement('style');
@@ -9,11 +9,4 @@
     @media(max-width:430px){.pmSourceGrid{grid-template-columns:minmax(0,1.1fr) minmax(115px,.9fr)!important;gap:7px!important}}
   `;
   document.head.appendChild(style);
-
-  window.addEventListener('load',()=>{
-    setTimeout(()=>{
-      if(document.documentElement.dataset.peerMatchVersion==='19'||document.querySelector('script[data-pmv19]'))return;
-      const s=document.createElement('script');s.src='./peermatch-v19.js?v=19';s.dataset.pmv19='1';document.body.appendChild(s);
-    },60);
-  },{once:true});
 })();
