@@ -1,16 +1,19 @@
-/* PeerMatch v53: selected-profile sharing shortcuts.
-   Guy/Girl selection bar: WhatsApp | SMS | Email | Delete | Clear.
+/* PeerMatch v58: selected-profile sharing shortcuts.
+   Guy/Girl selection bar: Email | SMS | WhatsApp | Delete | Clear.
    - WhatsApp keeps each selected profile as its own separate share/message.
-   - For multiple selections, PeerMatch walks through a small share queue so two
-     people are never combined into one WhatsApp text/photo payload.
+   - SMS now also walks multiple selected profiles one-by-one, keeping each
+     person's text and photo together instead of combining several profiles.
    - WhatsApp keeps the original profile text, including WhatsApp *bold* markers.
    - SMS strips * formatting markers.
-   - Photos travel with the matching person's text when Web Share supports files.
+   - Successful/started Email, SMS and WhatsApp profile shares are recorded in History.
 */
 (function(){
   const tracked={guys:new Set(),girls:new Set()};
   let waQueue=[];
   let waIndex=0;
+  let smsQueue=[];
+  let smsIndex=0;
+  let historySeq=0;
 
   function senderName(x){return String(x?.sourceName||x?.source||'').trim();}
   function senderPhone(x){return String(x?.sourcePhone||'').trim();}
@@ -78,46 +81,61 @@
     return new File([blob],safeName(x?.name||('profile-'+(index+1)))+'.'+ext,{type});
   }
 
-  function bodyFor(items){
-    return items.map(recordText).join('\n\n--------------------\n\n');
-  }
-
   function plainSmsText(s){
     return String(s||'').replace(/\*+/g,'');
   }
 
-  function profileFiles(items){
-    return items.map((x,i)=>asFile(fullPhoto(x),x,i)).filter(Boolean);
+  function safeHtml(s){
+    return String(s||'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
   }
 
-  async function shareWithFiles(title,text,files){
-    const canShare=typeof navigator.share==='function'&&(!navigator.canShare||navigator.canShare({files}));
-    if(!canShare)return false;
-    try{
-      await navigator.share({title,text,files});
-      return true;
-    }catch(err){
-      if(err?.name==='AbortError')return true;
-      console.warn('PeerMatch profile share failed',err);
-      return false;
-    }
+  async function recordShare(x,channel){
+    if(!x)return;
+    x.activities=x.activities||[];
+    x.activities.push({
+      id:Date.now()*1000+(historySeq++%1000),
+      type:'action',
+      action:'Profile shared • '+channel,
+      text:'Profile sharing opened via '+channel+'.',
+      ts:stamp()
+    });
+    try{await save();}
+    catch(err){console.warn('PeerMatch could not save share history',err);}
   }
 
   async function shareOneWhatsApp(x,index){
     const text=recordText(x);
     const file=asFile(fullPhoto(x),x,index);
-    if(typeof navigator.share==='function'){
-      const payload={title:x?.name||'PeerMatch profile',text};
-      if(file&&(!navigator.canShare||navigator.canShare({files:[file]})))payload.files=[file];
+    if(file&&typeof navigator.share==='function'&&(!navigator.canShare||navigator.canShare({files:[file]}))){
       try{
-        await navigator.share(payload);
+        await navigator.share({title:x?.name||'PeerMatch profile',text,files:[file]});
+        await recordShare(x,'WhatsApp');
         return 'shared';
       }catch(err){
         if(err?.name==='AbortError')return 'cancelled';
         console.warn('PeerMatch WhatsApp share failed',err);
       }
     }
+    recordShare(x,'WhatsApp');
     location.href='https://wa.me/?text='+encodeURIComponent(text);
+    return 'fallback';
+  }
+
+  async function shareOneSms(x,index){
+    const text=plainSmsText(recordText(x));
+    const file=asFile(fullPhoto(x),x,index);
+    if(file&&typeof navigator.share==='function'&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+      try{
+        await navigator.share({title:x?.name||'PeerMatch profile',text,files:[file]});
+        await recordShare(x,'SMS');
+        return 'shared';
+      }catch(err){
+        if(err?.name==='AbortError')return 'cancelled';
+        console.warn('PeerMatch SMS photo share failed',err);
+      }
+    }
+    recordShare(x,'SMS');
+    location.href='sms:?body='+encodeURIComponent(text);
     return 'fallback';
   }
 
@@ -129,10 +147,7 @@
 
   function renderWaQueue(){
     document.getElementById('pmWaQueue')?.remove();
-    if(!waQueue.length||waIndex>=waQueue.length){
-      closeWaQueue();
-      return;
-    }
+    if(!waQueue.length||waIndex>=waQueue.length){closeWaQueue();return;}
 
     const x=waQueue[waIndex];
     const shade=document.createElement('div');
@@ -142,7 +157,7 @@
     box.style.cssText='width:min(560px,100%);background:#fff;border-radius:18px;padding:16px;box-shadow:0 12px 36px rgba(0,0,0,.28)';
     box.innerHTML=`
       <div style="font-weight:850;font-size:17px;margin-bottom:5px">Share profiles separately</div>
-      <div style="font-size:13px;color:#667;margin-bottom:12px">Profile ${waIndex+1} of ${waQueue.length}: <b>${String(x?.name||'Unnamed profile').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))}</b></div>
+      <div style="font-size:13px;color:#667;margin-bottom:12px">Profile ${waIndex+1} of ${waQueue.length}: <b>${safeHtml(String(x?.name||'Unnamed profile').replace(/\*/g,''))}</b></div>
       <button id="pmWaShareNext" style="width:100%;padding:12px;border-radius:12px;font-weight:850">Share this profile</button>
       <button id="pmWaCancelQueue" class="secondary" style="width:100%;margin-top:8px;padding:10px;border-radius:12px">Cancel</button>`;
     shade.appendChild(box);
@@ -160,25 +175,54 @@
         return;
       }
       waIndex++;
-      if(waIndex>=waQueue.length){
-        closeWaQueue();
-      }else{
-        renderWaQueue();
+      if(waIndex>=waQueue.length)closeWaQueue();else renderWaQueue();
+    };
+  }
+
+  function closeSmsQueue(){
+    document.getElementById('pmSmsQueue')?.remove();
+    smsQueue=[];
+    smsIndex=0;
+  }
+
+  function renderSmsQueue(){
+    document.getElementById('pmSmsQueue')?.remove();
+    if(!smsQueue.length||smsIndex>=smsQueue.length){closeSmsQueue();return;}
+
+    const x=smsQueue[smsIndex];
+    const shade=document.createElement('div');
+    shade.id='pmSmsQueue';
+    shade.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.36);display:flex;align-items:flex-end;justify-content:center;padding:14px';
+    const box=document.createElement('div');
+    box.style.cssText='width:min(560px,100%);background:#fff;border-radius:18px;padding:16px;box-shadow:0 12px 36px rgba(0,0,0,.28)';
+    box.innerHTML=`
+      <div style="font-weight:850;font-size:17px;margin-bottom:5px">Send profiles separately</div>
+      <div style="font-size:13px;color:#667;margin-bottom:12px">Profile ${smsIndex+1} of ${smsQueue.length}: <b>${safeHtml(String(x?.name||'Unnamed profile').replace(/\*/g,''))}</b></div>
+      <button id="pmSmsShareNext" style="width:100%;padding:12px;border-radius:12px;font-weight:850">Send this profile</button>
+      <button id="pmSmsCancelQueue" class="secondary" style="width:100%;margin-top:8px;padding:10px;border-radius:12px">Cancel</button>`;
+    shade.appendChild(box);
+    document.body.appendChild(shade);
+
+    box.querySelector('#pmSmsCancelQueue').onclick=closeSmsQueue;
+    box.querySelector('#pmSmsShareNext').onclick=async()=>{
+      const btn=box.querySelector('#pmSmsShareNext');
+      btn.disabled=true;
+      btn.textContent='Opening share...';
+      const result=await shareOneSms(x,smsIndex);
+      if(result==='cancelled'){
+        btn.disabled=false;
+        btn.textContent='Send this profile';
+        return;
       }
+      smsIndex++;
+      if(smsIndex>=smsQueue.length)closeSmsQueue();else renderSmsQueue();
     };
   }
 
   async function sendWhatsApp(k){
     const items=selectedItems(k);if(!items.length)return;
-    if(items.length===1){
-      const text=recordText(items[0]),file=asFile(fullPhoto(items[0]),items[0],0);
-      if(file&&await shareWithFiles(items[0]?.name||'PeerMatch profile',text,[file]))return;
-      location.href='https://wa.me/?text='+encodeURIComponent(text);
-      return;
-    }
+    if(items.length===1){await shareOneWhatsApp(items[0],0);return;}
 
-    // A browser cannot create multiple separate WhatsApp messages in one share
-    // payload. Queue them one-by-one so each person stays a separate text/photo.
     waQueue=items.slice();
     waIndex=0;
     renderWaQueue();
@@ -186,9 +230,13 @@
 
   async function sendSms(k){
     const items=selectedItems(k);if(!items.length)return;
-    const text=plainSmsText(bodyFor(items)),files=profileFiles(items);
-    if(files.length&&await shareWithFiles('PeerMatch profile',text,files))return;
-    location.href='sms:?body='+encodeURIComponent(text);
+    if(items.length===1){await shareOneSms(items[0],0);return;}
+
+    // A PWA cannot create several separate MMS/RCS drafts from one gesture.
+    // Queue one real user tap per profile so each text/photo stays together.
+    smsQueue=items.slice();
+    smsIndex=0;
+    renderSmsQueue();
   }
 
   function polishBar(k){
