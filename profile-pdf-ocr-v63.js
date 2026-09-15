@@ -52,6 +52,7 @@
   function profileKind(){const h=String(document.querySelector('#sheet h2')?.textContent||'');return/Guy/i.test(h)?'guys':/Girl/i.test(h)?'girls':'';}
   function isEditForm(){return/^Edit\b/i.test(String(document.querySelector('#sheet h2')?.textContent||'').trim());}
   function getActiveRecord(type,k){
+    if(!isEditForm())return null;
     if(type==='profile'&&activeProfile?.k===k)return(data[k]||[]).find(x=>String(x.id)===String(activeProfile.id))||null;
     if(type==='shadchan'&&activeShad!=null)return(data.shadchanim||[]).find(x=>String(x.id)===String(activeShad))||null;
     return null;
@@ -152,7 +153,7 @@
     if(!x)return;
     if(snapshot.remove){x.profileAttachment=null;x.profileAttachmentName='';x.profileAttachmentType='';}
     else if(snapshot.file){x.profileAttachment=snapshot.file;x.profileAttachmentName=snapshot.name||snapshot.file.name||'profile attachment';x.profileAttachmentType=snapshot.mime||snapshot.file.type||'application/octet-stream';}
-    if(snapshot.type==='profile'&&x.text===ONLY_SENTINEL)x.text='';
+    if(snapshot.type==='profile'&&x.text===ONLY_SENTINEL){x.text='';if(String(x.name||'').trim()===ONLY_SENTINEL)x.name=(snapshot.k==='guys'?'Guy':'Girl')+' profile';}
     if(snapshot.type==='shadchan')x.profileText=snapshot.shadText||'';
     try{await save();if(snapshot.type==='profile')renderP(snapshot.k);else renderS();}catch(e){console.warn('PeerMatch attachment save',e);}
   }
