@@ -57,11 +57,12 @@ jobs:
               'make-match-v32.js',
               'match-text-required-v33.js',
               'match-photo-option-v34.js',
+              'make-match-v35-ui.js',
               'backup-v28.js',
               'history-delete-v30.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=34"></script>' for name in scripts)
-          if 'match-photo-option-v34.js?v=34' not in html:
+          tags = ''.join(f'<script src="./{name}?v=35"></script>' for name in scripts)
+          if 'make-match-v35-ui.js?v=35' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
