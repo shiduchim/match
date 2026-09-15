@@ -1,9 +1,10 @@
-/* PeerMatch v58: compact, consistent forwarding layout for selected items.
+/* PeerMatch v59: compact, consistent forwarding layout for selected items.
    - Guys/Girls heading: Share this profile.
    - Shadchanim heading: Share this shadchan.
    - Email | SMS | WhatsApp use the same blue button style and compact height.
    - Selected count | Select all | Delete | Clear stay together on one bottom row.
-   - Removes any older duplicate Select all control left outside that row.
+   - Reuses one existing Select all control and hides any legacy duplicate instead
+     of creating/removing competing controls that older observers may recreate.
 */
 (function(){
   const style=document.createElement('style');
@@ -70,6 +71,8 @@
     }
     .pmSelManage .pmSelectAllBtn{background:#e8f1f7!important;color:#274b64!important}
     .pmSelManage .pmDanger{background:#fbe7e7!important;color:#8a2929!important}
+    .pmSelectAllDuplicate{display:none!important}
+    .pmSelHeader.pmOnlyHiddenSelectAll{display:none!important}
     @media(max-width:390px){
       .pmSelShare{gap:5px}
       .pmSelShare button{font-size:11px!important;padding:8px 3px!important;min-height:38px!important}
@@ -101,25 +104,49 @@
     next();
   }
 
-  function ensureSelectAll(bar,k){
-    let b=bar.querySelector('#pmSelectAll-'+k);
+  function normalizedText(el){
+    return String(el?.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+  }
+
+  function selectAllCandidates(section,k){
+    if(!section)return[];
+    const expectedId='pmSelectAll-'+k;
+    return Array.from(section.querySelectorAll('button')).filter(b=>
+      b.id===expectedId||b.classList.contains('pmSelectAllBtn')||normalizedText(b)==='select all'
+    );
+  }
+
+  function ensureSelectAll(bar,k,manage){
+    const section=sectionFor(k)||bar;
+    const candidates=selectAllCandidates(section,k);
+    let b=candidates.find(x=>x.parentElement===manage)||candidates[0]||null;
     if(!b){
       b=document.createElement('button');
-      b.id='pmSelectAll-'+k;
       b.type='button';
-      b.className='pmSelectAllBtn';
-      b.textContent='Select all';
-      b.onclick=()=>selectAllVisible(k);
     }
+
+    b.id='pmSelectAll-'+k;
+    b.type='button';
+    b.classList.add('pmSelectAllBtn');
+    b.classList.remove('pmSelectAllDuplicate');
+    b.removeAttribute('aria-hidden');
+    b.removeAttribute('disabled');
+    b.removeAttribute('tabindex');
+    b.textContent='Select all';
+    b.onclick=()=>selectAllVisible(k);
     return b;
   }
 
-  function removeDuplicateSelectAll(k,keep){
+  function hideDuplicateSelectAll(k,keep){
     const section=sectionFor(k);
     if(!section)return;
-    Array.from(section.querySelectorAll('button')).forEach(b=>{
+    selectAllCandidates(section,k).forEach(b=>{
       if(b===keep)return;
-      if(String(b.textContent||'').trim().toLowerCase()==='select all')b.remove();
+      b.classList.add('pmSelectAllDuplicate');
+      b.removeAttribute('id');
+      b.setAttribute('aria-hidden','true');
+      b.tabIndex=-1;
+      b.disabled=true;
     });
   }
 
@@ -147,8 +174,7 @@
     sms.classList.add('pmChannelSms');
     wa.classList.add('pmChannelWhatsApp');
 
-    const selectAll=ensureSelectAll(bar,k);
-    removeDuplicateSelectAll(k,selectAll);
+    const selectAll=ensureSelectAll(bar,k,manage);
 
     share.appendChild(email);
     share.appendChild(sms);
@@ -159,8 +185,13 @@
     manage.appendChild(del);
     manage.appendChild(clear);
 
+    hideDuplicateSelectAll(k,selectAll);
+
     const oldHeader=bar.querySelector('.pmSelHeader');
-    if(oldHeader&&!oldHeader.children.length)oldHeader.remove();
+    if(oldHeader){
+      const hasVisibleChild=Array.from(oldHeader.children).some(el=>!el.classList.contains('pmSelectAllDuplicate'));
+      oldHeader.classList.toggle('pmOnlyHiddenSelectAll',!hasVisibleChild);
+    }
 
     if(bar.children[0]!==title)bar.insertBefore(title,bar.firstChild);
     if(title.nextElementSibling!==share)title.insertAdjacentElement('afterend',share);
