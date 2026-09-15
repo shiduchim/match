@@ -1,13 +1,12 @@
-/* PeerMatch v70: clean contact layout, clickable phones, reliable conversation info. */
+/* PeerMatch v72: clean contact layout, clickable phones, reliable conversation info. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='70';
+  document.documentElement.dataset.peerMatchVersion='72';
   let active=null,saveTimer=null;
 
   const css=document.createElement('style');
   css.textContent=`
     #sheet .pmV69PhoneLink{color:#315b78!important;font-weight:800!important;text-decoration:none!important;cursor:pointer!important;white-space:normal!important}
     #sheet .pmV69PhoneLink:active{text-decoration:underline!important}
-    #sheet .pmV69ShadPhone{margin:6px 0 10px;padding:7px 9px;border:1px solid #d7e2e9;border-radius:10px;background:#fff;font-size:12px}
 
     /* Contact person display: Name, phone, gap, Name, phone. */
     #sheet .pmV67ContactPeople{display:block!important;margin:7px 0 10px!important}
@@ -37,32 +36,57 @@
 
   function saveQuiet(){
     clearTimeout(saveTimer);
-    saveTimer=setTimeout(()=>{try{const p=save();if(p?.catch)p.catch(e=>console.warn('PeerMatch v70 save',e));}catch(e){console.warn('PeerMatch v70 save',e);}},220);
+    saveTimer=setTimeout(()=>{try{const p=save();if(p?.catch)p.catch(e=>console.warn('PeerMatch v72 save',e));}catch(e){console.warn('PeerMatch v72 save',e);}},220);
   }
 
-  function removeCopyPhone(){
+  /* Shadchan detail already has the four contact buttons. Remove the extra phone/copy strip completely. */
+  function removeShadchanPhoneStrip(){
     const sheet=document.getElementById('sheet');if(!sheet)return;
-    for(const box of sheet.querySelectorAll('.pmV65PhoneCopy')){
-      const text=String(box.textContent||'').replace(/\bCopy\b|\bCopied\b/gi,'').replace(/^Phone:\s*/i,'').trim();
-      if(!text){box.remove();continue;}
-      const a=document.createElement('a');a.className='pmV69PhoneLink';a.href=phoneHref(text);a.textContent=text;
-      box.className='pmV69ShadPhone';box.innerHTML='<b>Phone:</b> ';box.appendChild(a);
-    }
+    sheet.querySelectorAll('.pmV65PhoneCopy,.pmV69ShadPhone').forEach(el=>el.remove());
+  }
+
+  async function logPhoneCall(phone,name){
+    if(!active||!['guys','girls'].includes(active.k))return true;
+    const x=currentRecord();if(!x)return true;
+    x.activities=x.activities||[];
+    x.activities.push({
+      id:Date.now(),
+      type:'action',
+      action:'Call • Contact person',
+      text:`Call opened to ${name||'Contact person'}${phone?' ('+phone+')':''}.`,
+      ts:typeof stamp==='function'?stamp():new Date().toLocaleString(),
+      recipient:name||'Contact person',
+      recipientPhone:phone||'',
+      recipientSide:'Contact person'
+    });
+    try{await save();return true;}catch(e){console.warn('PeerMatch v72 call history save',e);return false;}
   }
 
   function clickableProfilePhones(){
     const sheet=document.getElementById('sheet');if(!sheet)return;
     for(const el of sheet.querySelectorAll('.pmV67ContactPhone')){
-      if(el.tagName==='A')continue;
-      const p=String(el.textContent||'').trim();if(!p)continue;
-      const a=document.createElement('a');a.className='pmV67ContactPhone pmV69PhoneLink';a.href=phoneHref(p);a.textContent=p;el.replaceWith(a);
+      let a=el;
+      if(el.tagName!=='A'){
+        const p=String(el.textContent||'').trim();if(!p)continue;
+        a=document.createElement('a');a.className='pmV67ContactPhone pmV69PhoneLink';a.href=phoneHref(p);a.textContent=p;el.replaceWith(a);
+      }
+      if(a.dataset.pmV72Call==='1')continue;
+      a.dataset.pmV72Call='1';
+      a.addEventListener('click',async e=>{
+        const phone=String(a.textContent||'').trim();
+        if(!phone)return;
+        e.preventDefault();e.stopPropagation();
+        const line=a.closest('.pmV67ContactLine');
+        const name=String(line?.querySelector('.pmV67ContactName')?.textContent||'Contact person').trim();
+        await logPhoneCall(phone,name);
+        location.href=phoneHref(phone);
+      });
     }
   }
 
   function positionProfileContacts(){
     const sheet=document.getElementById('sheet'),buttons=sheet?.querySelector('.pmProfileContact'),people=sheet?.querySelector('.pmV67ContactPeople');
     if(!sheet||!buttons||!people)return;
-    // Contact people belong above the 4 channel buttons, never below them.
     if(people.nextElementSibling!==buttons)buttons.insertAdjacentElement('beforebegin',people);
   }
 
@@ -101,7 +125,7 @@
     draw();
   }
 
-  function polish(){removeCopyPhone();clickableProfilePhones();positionProfileContacts();removeObviousSelfLinks();conversationInfo();}
+  function polish(){removeShadchanPhoneStrip();clickableProfilePhones();positionProfileContacts();removeObviousSelfLinks();conversationInfo();}
 
   const prevP=window.openP;if(typeof prevP==='function')window.openP=function(k,id){active={k,id};const r=prevP(k,id);setTimeout(polish,30);return r;};
   const prevS=window.openS;if(typeof prevS==='function')window.openS=function(id){active={k:'shadchanim',id};const r=prevS(id);setTimeout(polish,30);return r;};
