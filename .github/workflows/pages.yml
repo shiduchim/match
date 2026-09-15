@@ -64,9 +64,10 @@ jobs:
               'sender-fields-v39.js',
               'profile-contact-v40.js',
               'profile-required-v44.js',
+              'feature-request-v46.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=45"></script>' for name in scripts)
-          if 'profile-required-v44.js?v=45' not in html:
+          tags = ''.join(f'<script src="./{name}?v=46"></script>' for name in scripts)
+          if 'feature-request-v46.js?v=46' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
