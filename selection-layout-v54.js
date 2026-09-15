@@ -1,8 +1,8 @@
-/* PeerMatch v55: cleaner selected-item action layout.
-   Row 1: selected count + Select all
-   Row 2: Email | SMS | WhatsApp
-   Row 3: Delete | Clear, visually separated from sharing actions.
-   Applies to Guys, Girls, and Shadchanim.
+/* PeerMatch v56: clear forwarding layout for selected Guys, Girls, and Shadchanim.
+   - Guys/Girls heading: Share this profile.
+   - Shadchanim heading: Share this shadchan.
+   - Email | SMS | WhatsApp are the main, slightly taller share buttons.
+   - Selected count | Select all | Delete | Clear stay together on the bottom row.
 */
 (function(){
   const style=document.createElement('style');
@@ -11,50 +11,98 @@
       display:block!important;
       padding:11px!important;
     }
-    .pmSelHeader{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:9px;
-    }
-    .pmSelHeader .pmCount{
-      margin:0!important;
-      font-size:13px;
-      white-space:nowrap;
-    }
-    .pmSelHeader button{
-      margin:0!important;
-      width:auto!important;
-      flex:0 0 auto;
+    .pmSelTitle{
+      font-size:14px;
+      font-weight:850;
+      color:var(--text);
+      margin:0 0 8px;
     }
     .pmSelShare{
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
       gap:8px;
     }
+    .pmSelShare button{
+      width:100%!important;
+      min-width:0;
+      min-height:44px!important;
+      margin:0!important;
+      padding:10px 6px!important;
+      border-radius:11px!important;
+      font-size:12px!important;
+      font-weight:800!important;
+      color:#19324a!important;
+    }
+    .pmChannelEmail{background:#dfeef9!important}
+    .pmChannelSms{background:#d2e6f4!important}
+    .pmChannelWhatsApp{background:#c3dcf0!important}
     .pmSelManage{
       display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:8px;
-      margin-top:10px;
-      padding-top:10px;
+      grid-template-columns:auto repeat(3,minmax(0,1fr));
+      align-items:center;
+      gap:6px;
+      margin-top:9px;
+      padding-top:9px;
       border-top:1px solid var(--line);
     }
-    .pmSelShare button,.pmSelManage button{
-      width:100%!important;
+    .pmSelManage .pmCount{
       margin:0!important;
-      min-width:0;
+      padding:0 3px 0 1px;
+      font-size:11px!important;
+      font-weight:800;
+      color:var(--muted);
+      white-space:nowrap;
     }
+    .pmSelManage button{
+      width:100%!important;
+      min-width:0;
+      margin:0!important;
+      padding:7px 5px!important;
+      min-height:34px!important;
+      border-radius:9px!important;
+      font-size:10.5px!important;
+      font-weight:800!important;
+    }
+    .pmSelManage .pmSelectAllBtn{background:#e8f1f7!important;color:#274b64!important}
+    .pmSelManage .pmDanger{background:#fbe7e7!important;color:#8a2929!important}
     @media(max-width:390px){
       .pmSelShare{gap:6px}
-      .pmSelShare button,.pmSelManage button{font-size:11.5px!important;padding:8px 5px!important}
+      .pmSelShare button{font-size:11.5px!important;padding:9px 4px!important}
+      .pmSelManage{gap:4px}
+      .pmSelManage .pmCount{font-size:10px!important}
+      .pmSelManage button{font-size:9.5px!important;padding:7px 3px!important}
     }
   `;
   document.head.appendChild(style);
 
-  function findSelectAll(bar){
-    return Array.from(bar.querySelectorAll('button')).find(b=>b.textContent.trim().toLowerCase()==='select all')||null;
+  function listFor(k){
+    return document.getElementById(k==='shadchanim'?'shadchanList':k+'List');
+  }
+
+  function selectAllVisible(k){
+    let attempts=0;
+    function next(){
+      const list=listFor(k);
+      if(!list)return;
+      const check=Array.from(list.querySelectorAll('.pmListCheck')).find(c=>!c.checked);
+      if(!check||attempts++>500)return;
+      check.click();
+      requestAnimationFrame(next);
+    }
+    next();
+  }
+
+  function ensureSelectAll(bar,k){
+    let b=bar.querySelector('#pmSelectAll-'+k);
+    if(!b){
+      b=document.createElement('button');
+      b.id='pmSelectAll-'+k;
+      b.type='button';
+      b.className='pmSelectAllBtn';
+      b.textContent='Select all';
+      b.onclick=()=>selectAllVisible(k);
+    }
+    return b;
   }
 
   function organize(k){
@@ -69,29 +117,36 @@
     const clear=bar.querySelector('#pmClear-'+k);
     if(!count||!email||!sms||!wa||!del||!clear)return;
 
-    let header=bar.querySelector('.pmSelHeader');
+    let title=bar.querySelector('.pmSelTitle');
     let share=bar.querySelector('.pmSelShare');
     let manage=bar.querySelector('.pmSelManage');
-    if(!header){header=document.createElement('div');header.className='pmSelHeader';}
+    if(!title){title=document.createElement('div');title.className='pmSelTitle';}
     if(!share){share=document.createElement('div');share.className='pmSelShare';}
     if(!manage){manage=document.createElement('div');manage.className='pmSelManage';}
+    title.textContent=k==='shadchanim'?'Share this shadchan':'Share this profile';
 
-    const selectAll=findSelectAll(bar);
-    header.appendChild(count);
-    if(selectAll)header.appendChild(selectAll);
+    email.classList.add('pmChannelEmail');
+    sms.classList.add('pmChannelSms');
+    wa.classList.add('pmChannelWhatsApp');
 
-    // User-facing order: Email, SMS, WhatsApp.
+    const selectAll=ensureSelectAll(bar,k);
+
     share.appendChild(email);
     share.appendChild(sms);
     share.appendChild(wa);
 
-    // Management actions stay visually separate below sharing actions.
+    manage.appendChild(count);
+    manage.appendChild(selectAll);
     manage.appendChild(del);
     manage.appendChild(clear);
 
-    if(!header.parentNode)bar.appendChild(header);
-    if(!share.parentNode)bar.appendChild(share);
-    if(!manage.parentNode)bar.appendChild(manage);
+    // Remove the previous v54 header if it is still present after the count moved.
+    const oldHeader=bar.querySelector('.pmSelHeader');
+    if(oldHeader&&!oldHeader.children.length)oldHeader.remove();
+
+    if(bar.children[0]!==title)bar.insertBefore(title,bar.firstChild);
+    if(title.nextElementSibling!==share)title.insertAdjacentElement('afterend',share);
+    if(share.nextElementSibling!==manage)share.insertAdjacentElement('afterend',manage);
     bar.classList.add('pmOrganizedSelection');
   }
 
