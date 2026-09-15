@@ -69,8 +69,8 @@ jobs:
               'email-photo-v51.js',
               'profile-share-v52.js',
           ]
-          tags = ''.join(f'<script src="./{name}?v=52"></script>' for name in scripts)
-          if 'profile-share-v52.js?v=52' not in html:
+          tags = ''.join(f'<script src="./{name}?v=53"></script>' for name in scripts)
+          if 'profile-share-v52.js?v=53' not in html:
               html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
 
