@@ -1,6 +1,6 @@
-/* PeerMatch v81: matching compact Edit buttons in the top profile headers. */
+/* PeerMatch v82: matching compact Edit buttons in the top profile headers + BH above Guy/Girl Edit. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='81';
+  document.documentElement.dataset.peerMatchVersion='82';
 
   const style=document.createElement('style');
   style.textContent=`
@@ -25,7 +25,8 @@
       flex:0 0 auto!important
     }
     #sheet .v19Head,#sheet .v19ShadHead{align-items:flex-start!important}
-    #sheet .v19Head #v19EditProfile{align-self:flex-start!important}
+    #sheet .pmV82EditStack{display:flex;flex-direction:column;align-items:center;gap:3px;flex:0 0 auto}
+    #sheet .pmV82BH{font-size:12px;font-weight:850;line-height:1;color:var(--text);white-space:nowrap}
   `;
   document.head.appendChild(style);
 
@@ -37,8 +38,17 @@
     if(editProfile&&profileHead&&!sheet.querySelector('.v19ShadHead')){
       editProfile.textContent='Edit';
       editProfile.classList.remove('full');
-      /* Put Edit on the same top row as the profile name/photo, like the Shadchan header. */
-      if(editProfile.parentElement!==profileHead)profileHead.appendChild(editProfile);
+      let stack=profileHead.querySelector('.pmV82EditStack');
+      if(!stack){
+        stack=document.createElement('div');
+        stack.className='pmV82EditStack';
+        const bh=document.createElement('div');
+        bh.className='pmV82BH';
+        bh.textContent='ב״ה';
+        stack.appendChild(bh);
+        profileHead.appendChild(stack);
+      }
+      if(editProfile.parentElement!==stack)stack.appendChild(editProfile);
     }
 
     const editShad=sheet.querySelector('#v19EditShad');
