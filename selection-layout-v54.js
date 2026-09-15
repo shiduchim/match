@@ -1,8 +1,9 @@
-/* PeerMatch v57: compact, consistent forwarding layout for selected items.
+/* PeerMatch v58: compact, consistent forwarding layout for selected items.
    - Guys/Girls heading: Share this profile.
    - Shadchanim heading: Share this shadchan.
-   - Email | SMS | WhatsApp use the same blue button style and slightly shorter height.
-   - Selected count | Select all | Delete | Clear always stay together on one bottom row.
+   - Email | SMS | WhatsApp use the same blue button style and compact height.
+   - Selected count | Select all | Delete | Clear stay together on one bottom row.
+   - Removes any older duplicate Select all control left outside that row.
 */
 (function(){
   const style=document.createElement('style');
@@ -83,6 +84,10 @@
     return document.getElementById(k==='shadchanim'?'shadchanList':k+'List');
   }
 
+  function sectionFor(k){
+    return document.getElementById(k+'Section');
+  }
+
   function selectAllVisible(k){
     let attempts=0;
     function next(){
@@ -107,6 +112,15 @@
       b.onclick=()=>selectAllVisible(k);
     }
     return b;
+  }
+
+  function removeDuplicateSelectAll(k,keep){
+    const section=sectionFor(k);
+    if(!section)return;
+    Array.from(section.querySelectorAll('button')).forEach(b=>{
+      if(b===keep)return;
+      if(String(b.textContent||'').trim().toLowerCase()==='select all')b.remove();
+    });
   }
 
   function organize(k){
@@ -134,6 +148,7 @@
     wa.classList.add('pmChannelWhatsApp');
 
     const selectAll=ensureSelectAll(bar,k);
+    removeDuplicateSelectAll(k,selectAll);
 
     share.appendChild(email);
     share.appendChild(sms);
