@@ -54,15 +54,12 @@
     }
 
     const contact=sheet.querySelector('.pmV74ContactSummary');
-    const buttons=sheet.querySelector('.pmProfileContact');
     if(contact){
       contact.classList.add('pmV85ProfileContact');
       if(anchor.nextElementSibling!==contact)anchor.insertAdjacentElement('afterend',contact);
-      anchor=contact;
     }
-    if(buttons){
-      if(anchor.nextElementSibling!==buttons)anchor.insertAdjacentElement('afterend',buttons);
-    }
+
+    // The four action buttons intentionally stay in their original contact-action area.
   }
 
   let queued=false;
