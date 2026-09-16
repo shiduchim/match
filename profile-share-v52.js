@@ -1,4 +1,4 @@
-/* PeerMatch v97: selected-profile sharing with recipient-aware WhatsApp history. */
+/* PeerMatch v103: selected-profile sharing can use a selected Shadchan directly. */
 (function(){
   const tracked={guys:new Set(),girls:new Set()};
   let waQueue=[],waIndex=0,waRecipient=null,smsQueue=[],smsIndex=0,historySeq=0;
@@ -10,6 +10,8 @@
   function itemForCheckbox(k,check){const list=document.getElementById(k+'List'),card=check.closest('.card');if(!list||!card)return null;const cards=[...list.children].filter(el=>el.classList?.contains('card')),i=cards.indexOf(card);return i>=0?visible(k)[i]||null:null;}
   function selectedCount(k){const m=(document.querySelector('#pmSelected-'+k+' .pmCount')?.textContent||'').match(/\d+/);return m?Number(m[0]):0;}
   function selectedItems(k){const n=selectedCount(k);let items=(data[k]||[]).filter(x=>tracked[k].has(x.id));if(items.length===n)return items;const list=document.getElementById(k+'List');if(!list)return[];const a=visible(k),cards=[...list.children].filter(el=>el.classList?.contains('card'));items=[];cards.forEach((c,i)=>{if(c.querySelector('.pmListCheck:checked')&&a[i])items.push(a[i]);});return items;}
+  function visibleShadchanim(){const q=(document.getElementById('shadchanSearch')?.value||'').toLowerCase();return(data.shadchanim||[]).filter(x=>`${x.name||''} ${x.phone||''} ${x.email||''} ${x.tags||''} ${(x.activities||[]).map(a=>a.text||a.action||'').join(' ')}`.toLowerCase().includes(q));}
+  function selectedShadchan(){const list=document.getElementById('shadchanList');if(!list)return{count:0,item:null};const a=visibleShadchanim(),cards=[...list.children].filter(el=>el.classList?.contains('card')),items=[];cards.forEach((c,i)=>{if(c.querySelector('.pmListCheck:checked')&&a[i])items.push(a[i]);});return{count:items.length,item:items.length===1?items[0]:null};}
   function fullPhoto(x){return x?.profileMediaFull||x?.profileMedia||x?.profileImage||x?.photo||null;}
   function safeName(s){return String(s||'profile').replace(/[\\/:*?\"<>|]+/g,' ').replace(/\s+/g,' ').trim().slice(0,60)||'profile';}
   function asFile(blob,x,index){if(!(blob instanceof Blob))return null;const type=blob.type||'image/jpeg',ext=type.includes('png')?'png':type.includes('webp')?'webp':type.includes('gif')?'gif':'jpg';return new File([blob],safeName(x?.name||('profile-'+(index+1)))+'.'+ext,{type});}
@@ -18,8 +20,8 @@
   function waPhone(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('0'))d='972'+d.slice(1);else if(d.length===9&&d.startsWith('5'))d='972'+d;return d;}
 
   async function recordShare(x,channel,message,recipient){
-    if(!x)return;const rn=String(recipient?.name||'').trim(),rp=String(recipient?.phone||'').trim();
-    x.activities=x.activities||[];x.activities.push({id:Date.now()*1000+(historySeq++%1000),type:'action',action:'Profile shared • '+channel,text:String(message||''),ts:typeof stamp==='function'?stamp():new Date().toLocaleString(),recipient:rn,recipientPhone:rp,recipientSide:'Profile share'});
+    if(!x)return;const rn=String(recipient?.name||'').trim(),rp=String(recipient?.phone||'').trim(),sid=recipient?.shadchanId??recipient?.id??null;
+    x.activities=x.activities||[];x.activities.push({id:Date.now()*1000+(historySeq++%1000),type:'action',action:'Profile shared • '+channel,text:String(message||''),ts:typeof stamp==='function'?stamp():new Date().toLocaleString(),recipient:rn,recipientPhone:rp,recipientSide:'Profile share',recipientShadchanId:sid,shadchanId:sid});
     try{await save();}catch(err){console.warn('PeerMatch could not save share history',err);}
   }
 
@@ -37,7 +39,7 @@
       const done=v=>{shade.remove();resolve(v);};
       box.querySelector('#pmV97RecipientCancel').onclick=()=>done(null);
       shade.onclick=e=>{if(e.target===shade)done(null);};
-      box.querySelector('#pmV97RecipientGo').onclick=()=>{const n=String(name.value||'').trim(),p=String(phone.value||'').trim();if(!n&&!p){err.textContent='Enter a name or phone number.';return;}done({name:n,phone:p});};
+      box.querySelector('#pmV97RecipientGo').onclick=()=>{const n=String(name.value||'').trim(),p=String(phone.value||'').trim(),s=arr.find(z=>String(z.id)===String(sel.value));if(!n&&!p){err.textContent='Enter a name or phone number.';return;}done({name:n,phone:p,shadchanId:s?.id??null,id:s?.id??null});};
     });
   }
 
@@ -77,7 +79,19 @@
     box.querySelector('#pmSmsShareNext').onclick=async()=>{const btn=box.querySelector('#pmSmsShareNext');btn.disabled=true;btn.textContent='Opening share...';const result=await shareOneSms(x,smsIndex);if(result==='cancelled'){btn.disabled=false;btn.textContent='Send this profile';return;}smsIndex++;if(smsIndex>=smsQueue.length)closeSmsQueue();else renderSmsQueue();};
   }
 
-  async function sendWhatsApp(k){const items=selectedItems(k);if(!items.length)return;const recipient=await chooseWhatsAppRecipient();if(!recipient)return;waRecipient=recipient;if(items.length===1){await shareOneWhatsApp(items[0],0,recipient);waRecipient=null;return;}waQueue=items.slice();waIndex=0;renderWaQueue();}
+  async function sendWhatsApp(k){
+    const items=selectedItems(k);if(!items.length)return;
+    const picked=selectedShadchan();
+    if(picked.count>1)return alert('Select only one Shadchan before sending a profile.');
+    let recipient=null;
+    if(picked.item){
+      if(!waPhone(picked.item.phone))return alert('The selected Shadchan needs a phone number for WhatsApp.');
+      recipient={name:String(picked.item.name||'Shadchan'),phone:String(picked.item.phone||''),shadchanId:picked.item.id,id:picked.item.id};
+    }else{
+      recipient=await chooseWhatsAppRecipient();
+    }
+    if(!recipient)return;waRecipient=recipient;if(items.length===1){await shareOneWhatsApp(items[0],0,recipient);waRecipient=null;return;}waQueue=items.slice();waIndex=0;renderWaQueue();
+  }
   async function sendSms(k){const items=selectedItems(k);if(!items.length)return;if(items.length===1){await shareOneSms(items[0],0);return;}smsQueue=items.slice();smsIndex=0;renderSmsQueue();}
 
   function polishBar(k){const bar=document.getElementById('pmSelected-'+k);if(!bar||bar.classList.contains('hidden'))return;bar.querySelector('#pmCopy-'+k)?.remove();const email=bar.querySelector('#pmEmail-'+k);if(!email)return;if(!bar.querySelector('#pmWhatsApp-'+k)){const b=document.createElement('button');b.id='pmWhatsApp-'+k;b.className='secondary';b.textContent='WhatsApp';email.insertAdjacentElement('beforebegin',b);}if(!bar.querySelector('#pmSms-'+k)){const b=document.createElement('button');b.id='pmSms-'+k;b.className='secondary';b.textContent='SMS';email.insertAdjacentElement('beforebegin',b);}}
