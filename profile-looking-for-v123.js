@@ -2,7 +2,7 @@
    This file owns only these two fields: form entry/edit, persistence, and detail display. */
 (function(){
   document.documentElement.dataset.peerMatchVersion='123';
-  let activeProfile=null;
+  let activeProfile=null,pendingEdit=null,addToken=0;
 
   const style=document.createElement('style');
   style.textContent=`
@@ -58,6 +58,27 @@
     return Number.isInteger(n)&&n>=18&&n<=99;
   }
 
+  function applyValues(r,v){
+    if(!r)return;
+    r.lookingFor=v.lookingFor;
+    r.lookingForMaxAge=v.maxAge;
+  }
+
+  function saveQuiet(k){
+    try{
+      const p=save();
+      if(p?.then)p.then(()=>{try{renderP(k);}catch(e){}}).catch(e=>console.warn('PeerMatch v123 Looking for save',e));
+    }catch(e){console.warn('PeerMatch v123 Looking for save',e);}
+  }
+
+  function waitForAdded(k,beforeIds,v,token,attempt){
+    if(token!==addToken)return;
+    const r=(data[k]||[]).find(z=>!beforeIds.has(String(z.id)));
+    if(r){applyValues(r,v);saveQuiet(k);return;}
+    if(attempt>=40)return;
+    setTimeout(()=>waitForAdded(k,beforeIds,v,token,attempt+1),200);
+  }
+
   function installForm(){
     const sheet=document.getElementById('sheet'),profile=document.getElementById('v19Profile');
     if(!sheet||!profile||document.getElementById('pmV123LookingForm'))return;
@@ -74,10 +95,15 @@
     block.querySelector('#pmV123LookingFor').value=trim(x?.lookingFor);
     block.querySelector('#pmV123LookingAge').value=trim(x?.lookingForMaxAge);
 
-    const saveBtn=document.getElementById('v19Save');
+    const saveBtn=document.getElementById('v19Save'),cancelBtn=document.getElementById('v19Cancel');
     if(!saveBtn||saveBtn.dataset.pmV123Looking==='1')return;
     saveBtn.dataset.pmV123Looking='1';
     const beforeIds=new Set((data[k]||[]).map(z=>String(z.id)));
+
+    cancelBtn?.addEventListener('click',()=>{
+      pendingEdit=null;
+      addToken++;
+    },true);
 
     saveBtn.addEventListener('click',e=>{
       const v=values();
@@ -88,17 +114,12 @@
       }
 
       if(edit&&activeProfile?.k===k){
-        const r=record(k,activeProfile.id);if(r){r.lookingFor=v.lookingFor;r.lookingForMaxAge=v.maxAge;}
+        pendingEdit={k,id:activeProfile.id,v};
         return;
       }
 
-      setTimeout(async()=>{
-        const r=(data[k]||[]).find(z=>!beforeIds.has(String(z.id)));
-        if(!r)return;
-        r.lookingFor=v.lookingFor;
-        r.lookingForMaxAge=v.maxAge;
-        try{await save();renderP(k);}catch(err){console.warn('PeerMatch v123 Looking for save',err);}
-      },260);
+      const token=++addToken;
+      waitForAdded(k,beforeIds,v,token,0);
     },true);
   }
 
@@ -129,9 +150,14 @@
   const priorOpenP=window.openP;
   if(typeof priorOpenP==='function')window.openP=function(k,id){
     activeProfile={k,id};
-    const r=priorOpenP(k,id);
+    if(pendingEdit&&pendingEdit.k===k&&String(pendingEdit.id)===String(id)){
+      const r=record(k,id),v=pendingEdit.v;
+      pendingEdit=null;
+      if(r){applyValues(r,v);saveQuiet(k);}
+    }
+    const out=priorOpenP(k,id);
     setTimeout(()=>renderDetail(k,id),90);
-    return r;
+    return out;
   };
 
   let scheduled=false;
