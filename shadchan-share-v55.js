@@ -1,7 +1,17 @@
 /* PeerMatch v55: share selected shadchan contact information.
    Adds WhatsApp and SMS beside Email for the Shadchanim selection bar.
    Removes Copy there so sharing actions stay focused and consistent.
-*/
+
+   v115: the WhatsApp button here now first defers to the shared
+   window.pmRouteSelectedWhatsApp() (final-fixes-v107.js) — if exactly one Shadchan is
+   selected here AND one or more Guy/Girl profiles are selected (on their own tabs;
+   selection survives switching tabs), that shared function sends the profile(s) to this
+   selected Shadchan directly, the same path the Guy/Girl selection bar uses, instead of
+   this file's own "share the Shadchan's own contact card" behavior. When no profiles are
+   selected, or the shared function otherwise declines, this file's pre-existing
+   contact-share sendWhatsApp() below runs exactly as before. The button is now bound
+   directly at its creation site in polish() instead of via a document-wide capture-phase
+   listener, matching the pattern used for the Guy/Girl WhatsApp button. */
 (function(){
   let waQueue=[];
   let waIndex=0;
@@ -103,6 +113,10 @@
       const b=document.createElement('button');
       b.id='pmWhatsApp-shadchanim';b.className='secondary';b.textContent='WhatsApp';
       email.insertAdjacentElement('afterend',b);
+      b.onclick=()=>{
+        if(typeof window.pmRouteSelectedWhatsApp==='function'&&window.pmRouteSelectedWhatsApp())return;
+        sendWhatsApp();
+      };
     }
     if(!bar.querySelector('#pmSms-shadchanim')){
       const b=document.createElement('button');
@@ -111,9 +125,10 @@
     }
   }
 
+  /* WhatsApp is no longer caught here — it's bound directly on the button at creation
+     time above (matching the Guy/Girl WhatsApp button's pattern) so it can call the
+     shared window.pmRouteSelectedWhatsApp() router before falling back to sendWhatsApp(). */
   document.addEventListener('click',e=>{
-    const wa=e.target.closest?.('#pmWhatsApp-shadchanim');
-    if(wa){e.preventDefault();e.stopImmediatePropagation();sendWhatsApp();return;}
     const sms=e.target.closest?.('#pmSms-shadchanim');
     if(sms){e.preventDefault();e.stopImmediatePropagation();sendSms();}
   },true);

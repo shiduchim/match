@@ -122,11 +122,17 @@ This is critical for the WhatsApp selected-recipient workflow.
 - Search/filtering should not silently remap a selected checkbox to a different record.
 - Referral/grouped/collapsed Shadchan cards must map selection to the correct actual Shadchan record.
 
-## Selected profile -> selected Shadchan -> WhatsApp (v113 + v114 fix, pending device verification)
+## Selected profile -> selected Shadchan -> WhatsApp (v113 + v114 + v115 fix, pending device verification)
 
-v113 removed two independent DOM-position-based selection reconstructions: `final-fixes-v107.js` now reads `window.pmGetSelected(k)` (the real Set from `peermatch-v11.js`) as the authoritative selection source. v114 restored `profile-share-v52.js`'s general-recipient WhatsApp path (Case A, see below — it was over-aggressively deleted at v113 and has been recovered and re-pointed at `window.pmGetSelected`), added a direct "send to selected Shadchan" path (Case B) that reuses the exact same helper (`window.pmWhatsAppUrl`) the ordinary Shadchan-detail WhatsApp button uses, routes between the two at the button's own creation site instead of a document-wide listener, and — for Case B with multiple selected profiles — sends them one at a time through a persistent tap-per-profile queue rather than merging them into one message. Test with several known profiles and one known Shadchan with a valid WhatsApp number.
+v113 removed two independent DOM-position-based selection reconstructions: `final-fixes-v107.js` now reads `window.pmGetSelected(k)` (the real Set from `peermatch-v11.js`) as the authoritative selection source. v114 restored `profile-share-v52.js`'s general-recipient WhatsApp path (Case A, see below — it was over-aggressively deleted at v113 and has been recovered and re-pointed at `window.pmGetSelected`), added a direct "send to selected Shadchan" path (Case B) that reuses the exact same helper (`window.pmWhatsAppUrl`) the ordinary Shadchan-detail WhatsApp button uses, routes between the two at the button's own creation site instead of a document-wide listener, and — for Case B with multiple selected profiles — sends them one at a time through a persistent tap-per-profile queue rather than merging them into one message.
+
+**v115 is the fix that actually makes any of this reachable.** The user reported the v114 behavior still didn't work — a previously-untraced file, `profile-tools-v62.js`, ran a `window`-level (not `document`-level) capture-phase click listener that always intercepted the Guy/Girl WhatsApp button first, before v114's own button binding could ever run, and diverted it to an unrelated bare-`wa.me` share ignoring any selected Shadchan. `profile-tools-v62.js`'s listener no longer matches WhatsApp at all (only Email/SMS, unchanged). Separately, `shadchan-share-v55.js`'s own WhatsApp button (on the Shadchanim tab's own selection bar) is now routed through the same shared decision function, `window.pmRouteSelectedWhatsApp()`, so pressing WhatsApp from either tab behaves identically. Test with several known profiles and one known Shadchan with a valid WhatsApp number, on **both** the Guys/Girls tab and the Shadchanim tab.
 
 - **First confirm the ordinary Shadchan-detail WhatsApp button still works exactly as before** (open a Shadchan, tap WhatsApp, type a message, tap Continue) — this is the reference behavior Case B reuses; if this regresses, the shared helper broke something.
+- **This is the critical regression check for v115:** select exactly one Guy (or Girl) and exactly one Shadchan, then press WhatsApp from the **Guy/Girl tab's own selection toolbar**. WhatsApp must open directly to that Shadchan's number with the profile prefilled — not a bare WhatsApp contact picker. This is the exact scenario that failed after v114 and must be re-verified first before any other test in this section is meaningful.
+- Repeat the same check pressing WhatsApp from the **Shadchanim tab's own selection toolbar** instead (same Guy + same Shadchan both still selected) — must produce the identical result.
+- Select one Guy **and** one Girl at the same time, plus one Shadchan, and press WhatsApp from either tab — expect a clear alert asking to select only Guys or only Girls, not both; nothing should send silently or guess which profile to use.
+- Confirm Email and SMS for selected Guys/Girls (with the language-flag-filter dialog) still work exactly as before — `profile-tools-v62.js`'s listener for those two channels was intentionally left untouched.
 
 ### Case A — profile(s) selected, no Shadchan selected (must be unchanged)
 
@@ -135,6 +141,12 @@ v113 removed two independent DOM-position-based selection reconstructions: `fina
 - The existing recipient-choice dialog appears (pick an existing Shadchan or type a name/phone) exactly as before v113/v114 — this must not have regressed or been replaced by the direct-send path.
 - Confirm the existing "share multiple profiles one at a time" queue dialog still appears when 2+ profiles are selected, and Web-Share-with-photo-then-`wa.me`-fallback behavior is unchanged.
 - Confirm SMS-for-selected-profiles still works unchanged (shares this file with the restored/changed code — verify no regression).
+
+### Case A (Shadchanim tab) — Shadchan(s) selected, no Guy/Girl selected (must be unchanged)
+
+- Select one or more Shadchanim, select **no** Guy or Girl.
+- Press WhatsApp from the Shadchanim tab's own selection toolbar.
+- The pre-existing "share this Shadchan's own contact card" behavior runs exactly as before (single Shadchan sends immediately; 2+ Shadchanim show the existing one-at-a-time queue dialog) — this must not have been replaced by the direct-send-to-Shadchan path.
 
 ### Case B — exactly one Shadchan selected (single profile)
 

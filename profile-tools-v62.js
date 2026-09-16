@@ -225,9 +225,17 @@
     if(items.length===1){await shareProfileOne(channel,items[0],0,flags);return;}
     v62Queue={items:items.slice(),i:0,channel,flags};drawV62Queue();
   }
+  /* v115: WhatsApp removed from this match/selector. This was a window-level capture
+     listener — it fires before ANY handler on the button itself, including the direct
+     .onclick bound at creation time in profile-share-v52.js's polishBar(), so it always
+     won and always called stopImmediatePropagation(), making every WhatsApp fix in
+     profile-share-v52.js/final-fixes-v107.js since v107 unreachable for the Guy/Girl
+     selection bar — the true root cause of the selected-Shadchan WhatsApp send never
+     firing. Email/SMS behavior here (language-flag filtering via askShareLanguages) is
+     unaffected and intentionally left in place. */
   window.addEventListener('click',e=>{
-    const b=e.target?.closest?.('button[id^="pmEmail-"],button[id^="pmSms-"],button[id^="pmWhatsApp-"]');if(!b)return;
-    const m=b.id.match(/^pm(Email|Sms|WhatsApp)-(guys|girls)$/);if(!m)return;
+    const b=e.target?.closest?.('button[id^="pmEmail-"],button[id^="pmSms-"]');if(!b)return;
+    const m=b.id.match(/^pm(Email|Sms)-(guys|girls)$/);if(!m)return;
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const channel=m[1]==='Sms'?'SMS':m[1],k=m[2],items=selectedProfiles(k);if(!items.length)return;askShareLanguages(items,channel,flags=>sendSelectedProfiles(k,channel,flags));
   },true);
 

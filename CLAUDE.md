@@ -14,7 +14,7 @@ Before adding a new override, find the current owner and remove/fix the conflict
 
 ## Current version
 
-Current PWA/service-worker version at the time this file was written: **v114**.
+Current PWA/service-worker version at the time this file was written: **v115**.
 
 Version source of truth: `const VERSION='...'` in `sw.js`.
 
@@ -76,19 +76,23 @@ Contacts must not be moved above the profile text.
 
 Incoming: Android Share -> PeerMatch share target -> IndexedDB `inbox` -> import flow.
 
-Outgoing selected-profile workflow is **two intentional behaviors routed from one button** — do not collapse them into a single path:
+Outgoing selected-profile workflow is **two intentional behaviors, routed identically regardless of which selection toolbar's WhatsApp button is pressed** (Guy/Girl tab or Shadchanim tab) — do not collapse them into a single path, and do not let the two toolbars decide the routing differently:
 
-- **Case A** — profile(s) selected, no Shadchan selected (or 2+ Shadchanim): keep the existing general WhatsApp/share behavior, letting the user pick any recipient (an existing Shadchan or a typed name/phone).
-- **Case B** — exactly one Shadchan selected, with one or more Guy/Girl profiles selected:
-  1. user checks one or more Guy/Girl profiles,
+- **Case A** — profile(s) selected with no Shadchan selected (Guy/Girl tab), or Shadchan(s) selected with no Guy/Girl selected (Shadchanim tab): keep each tab's existing general/contact-share behavior.
+- **Case B** — exactly one Shadchan selected, with one or more Guy/Girl profiles selected (of one kind — Guys only, or Girls only; both at once gets a clear "choose one kind" alert instead of a guess):
+  1. user checks one or more Guy/Girl profiles (Guys only, or Girls only),
   2. user checks exactly one Shadchan,
   3. selection survives switching tabs,
-  4. user taps WhatsApp from the selected-profile toolbar,
+  4. user taps WhatsApp — from the Guy/Girl toolbar **or** the Shadchan toolbar, either must work identically,
   5. WhatsApp opens directly to that selected Shadchan with the first selected profile's text prefilled,
   6. send/open action is recorded on BOTH that profile's history and the Shadchan's history before handoff,
   7. if more than one profile is selected, they are sent **one at a time, never merged into a single message** — Shadchanim don't want bundled profiles. A persistent "Send profile N of M" prompt requires its own explicit tap per remaining profile before each further `wa.me` handoff, and the queue survives PeerMatch losing focus while WhatsApp is open (`final-fixes-v107.js`, `localStorage` key `pmWaSendQueue`).
 
-Do not create a second competing selection system. The original selection state in `peermatch-v11.js` is closure-owned and, as of **v113**, exposed read-only via `window.pmGetSelected(k)` (returns the real records for `'guys'`/`'girls'`/`'shadchanim'`). Any code that needs "what's selected" must call this — never reconstruct it from DOM card position/count. Two files used to do exactly that and it silently broke whenever the Shadchan list was reordered/grouped/collapsed. As of **v114**, both are switched to `window.pmGetSelected(k)`: `final-fixes-v107.js` owns Case B (`directWhatsApp`/`window.pmSendSelectedWhatsApp`, using the same proven `window.pmWhatsAppUrl()` phone-normalization + launch helper `peermatch-v19.js`'s Shadchan-detail WhatsApp button uses); `profile-share-v52.js` owns Case A (restored — it was mistakenly deleted entirely at v113, since it turned out to be intentional behavior, not redundant code) and also owns the shared WhatsApp button's creation site, where its `.onclick` routes between the two cases. See `docs/KNOWN_ISSUES.md` issue #2.
+Do not create a second competing selection system. The original selection state in `peermatch-v11.js` is closure-owned and, as of **v113**, exposed read-only via `window.pmGetSelected(k)` (returns the real records for `'guys'`/`'girls'`/`'shadchanim'`). Any code that needs "what's selected" must call this — never reconstruct it from DOM card position/count.
+
+The A/B routing decision itself must live in exactly one place: as of **v115**, `final-fixes-v107.js` exposes `window.pmRouteSelectedWhatsApp()`, and both `profile-share-v52.js`'s (Guy/Girl) and `shadchan-share-v55.js`'s (Shadchanim) WhatsApp buttons call it first, falling back to their own tab's Case-A default only when it returns `false`. Do not re-implement this decision locally in either file again.
+
+**v115 lesson, keep in mind for any future click-handling work:** a `window.addEventListener('click', fn, true)` (capture phase, registered on `window`) always fires before any listener closer to the target — including a `document`-level capture listener or a directly-bound `.onclick` on the element itself — regardless of script load order. `profile-tools-v62.js` had exactly such a listener intercepting the Guy/Girl WhatsApp button and silently defeating three rounds of otherwise-correct fixes (v107 through v114) before this was traced. When auditing "what handles this click," check `window`-level listeners specifically, not just `document`-level ones. See `docs/KNOWN_ISSUES.md` issue #2.
 
 A `wa.me` URL can preselect a phone and text, but cannot reliably attach a local binary photo/PDF. Native share can attach files but cannot reliably preselect the exact WhatsApp chat. Preserve that distinction. Photo/image attachment for the Case B direct-send flow is deferred — it is text-only for now.
 
@@ -111,7 +115,7 @@ The three active regressions reported immediately before this documentation was 
 - selected profile -> selected Shadchan -> WhatsApp still does not work reliably.
 - attachment placement can move back toward the top-right/header area instead of staying under profile text.
 
-Current status (see `docs/KNOWN_ISSUES.md` for full detail on each): attachment/contacts layout placement was fixed at the source at v110, verified on the installed Android PWA. PDF opening went through v111 (in-app viewer) and v112 (share-then-download) without ever actually running, due to an unrelated competing file (`whatsapp-import-v61.js`) always winning first; v113 removed that competitor and switched to a guaranteed synchronous download, pending device verification — do not assume it is fixed. The WhatsApp selected-send issue was root-caused to DOM-position-based selection reconstruction (in `final-fixes-v107.js` and `profile-share-v52.js`, not `workflow-v103.js` — that was a misattribution) and fixed at v113 by exposing `peermatch-v11.js`'s real selection via `window.pmGetSelected(k)`. At v114 the direct-send path (Case B above) was switched to the same proven `wa.me` launch helper as the working Shadchan-detail button, bound directly at the button's creation site instead of a document-wide listener, and extended with a one-tap-per-profile send queue so multiple selected profiles are never merged into one WhatsApp message; the pre-existing general-recipient path (Case A) — mistakenly deleted entirely at v113 — was restored. All of this is pending device verification.
+Current status (see `docs/KNOWN_ISSUES.md` for full detail on each): attachment/contacts layout placement was fixed at the source at v110, verified on the installed Android PWA. PDF opening went through v111 (in-app viewer) and v112 (share-then-download) without ever actually running, due to an unrelated competing file (`whatsapp-import-v61.js`) always winning first; v113 removed that competitor and switched to a guaranteed synchronous download, pending device verification — do not assume it is fixed. The WhatsApp selected-send issue went through a similar pattern: v113 root-caused DOM-position-based selection reconstruction (in `final-fixes-v107.js` and `profile-share-v52.js`, not `workflow-v103.js` — that was a misattribution) and exposed `peermatch-v11.js`'s real selection via `window.pmGetSelected(k)`; v114 switched the direct-send path to the same proven `wa.me` launch helper as the working Shadchan-detail button, bound directly at the button's creation site, restored the pre-existing general-recipient path (Case A, mistakenly deleted entirely at v113), and added a one-tap-per-profile send queue. **None of v113's or v114's button-level work was actually reachable**: v115 found that `profile-tools-v62.js` ran a `window`-level capture-phase click listener that always intercepted the Guy/Girl WhatsApp button first and diverted it elsewhere — a `window`-scoped listener beats any listener closer to the target regardless of load order, so no fix at the button or `document` level could ever have worked. v115 removed WhatsApp from that listener's match, added a single shared `window.pmRouteSelectedWhatsApp()` routing function used by both the Guy/Girl and Shadchanim toolbars so they can't diverge, and fixed a related but separate bug where the Shadchanim tab's own WhatsApp button ignored Guy/Girl selection entirely. All of this is pending device verification — this is the first version of this fix that has a plausible mechanism for actually running on tap.
 
 ## Docs index
 

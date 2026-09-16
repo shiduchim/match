@@ -18,6 +18,20 @@
       at a time behind an explicit tap each (Shadchanim don't want bundled profiles). Do
       not duplicate wa.me URL construction or queueing here for that path.
 
+   At v115, the actual A/B decision moved into a single shared function,
+   window.pmRouteSelectedWhatsApp() (final-fixes-v107.js) — this button's onclick just
+   calls it first and only runs its own case-A default (sendWhatsApp) when that returns
+   false. shadchan-share-v55.js's Shadchanim-tab WhatsApp button calls the exact same
+   shared function so the two toolbars cannot decide the A/B question differently. Do not
+   re-inline the shads.length===1 check here — it belongs to the shared router now.
+
+   v115 root cause note: this file's Case A/B routing (bound directly on the button since
+   v114) had never actually been reachable for the Guy/Girl bar — profile-tools-v62.js ran
+   a window-level capture-phase click listener matching button[id^="pmWhatsApp-"] for
+   "guys"/"girls" that always fired first and called stopImmediatePropagation(), so this
+   button's own .onclick never ran at all. Fixed at the source by removing WhatsApp from
+   that listener's match in profile-tools-v62.js — see docs/KNOWN_ISSUES.md issue #2.
+
    Selection reading for both paths uses window.pmGetSelected(k) (peermatch-v11.js) —
    the authoritative, ID-based selection. The old tracked-Set/DOM-position reconstruction
    (visible()/itemForCheckbox()/selectedCount()/a parallel `tracked` Set) has been removed
@@ -34,7 +48,12 @@
 
   function senderName(x){return String(x?.sourceName||x?.source||'').trim();}
   function senderPhone(x){return String(x?.sourcePhone||'').trim();}
-  function recordText(x){return [x?.name||'Unnamed profile',x?.age?'Age: '+x.age:'',x?.text||'',senderName(x)?'Sent by: '+senderName(x):'',senderPhone(x)?'Sender phone: '+senderPhone(x):''].filter(Boolean).join('\n');}
+  /* Respects the profile's own "Include when sharing" English/Hebrew/Russian settings
+     via the existing window.pmShareFilteredText(x) (profile-tools-v62.js) — the same
+     filter the old, now-removed WhatsApp interception used to apply. Falls back to raw
+     x.text if that helper isn't available for any reason. */
+  function shareText(x){return typeof window.pmShareFilteredText==='function'?window.pmShareFilteredText(x):String(x?.text||'');}
+  function recordText(x){return [x?.name||'Unnamed profile',x?.age?'Age: '+x.age:'',shareText(x),senderName(x)?'Sent by: '+senderName(x):'',senderPhone(x)?'Sender phone: '+senderPhone(x):''].filter(Boolean).join('\n');}
   function fullPhoto(x){return x?.profileMediaFull||x?.profileMedia||x?.profileImage||x?.photo||null;}
   function safeName(s){return String(s||'profile').replace(/[\\/:*?\"<>|]+/g,' ').replace(/\s+/g,' ').trim().slice(0,60)||'profile';}
   function asFile(blob,x,index){if(!(blob instanceof Blob))return null;const type=blob.type||'image/jpeg',ext=type.includes('png')?'png':type.includes('webp')?'webp':type.includes('gif')?'gif':'jpg';return new File([blob],safeName(x?.name||('profile-'+(index+1)))+'.'+ext,{type});}
@@ -140,9 +159,7 @@
       const b=document.createElement('button');b.id='pmWhatsApp-'+k;b.className='secondary';b.textContent='WhatsApp';
       email.insertAdjacentElement('beforebegin',b);
       b.onclick=()=>{
-        const profiles=window.pmGetSelected(k);if(!profiles.length)return;
-        const shads=window.pmGetSelected('shadchanim');
-        if(shads.length===1&&typeof window.pmSendSelectedWhatsApp==='function'){window.pmSendSelectedWhatsApp(k);return;}
+        if(typeof window.pmRouteSelectedWhatsApp==='function'&&window.pmRouteSelectedWhatsApp())return;
         sendWhatsApp(k);
       };
     }

@@ -24,7 +24,12 @@
   const trim=v=>String(v||'').trim();
   function senderName(x){return trim(x?.sourceName||x?.source);}
   function senderPhone(x){return trim(x?.sourcePhone);}
-  function profileText(x){return [x?.name||'Unnamed profile',x?.age?'Age: '+x.age:'',x?.text||'',senderName(x)?'Sent by: '+senderName(x):'',senderPhone(x)?'Sender phone: '+senderPhone(x):''].filter(Boolean).join('\n');}
+  /* Respects the profile's own "Include when sharing" English/Hebrew/Russian settings
+     via the existing window.pmShareFilteredText(x) (profile-tools-v62.js) — the same
+     filter the old, now-removed WhatsApp interception used to apply. Falls back to raw
+     x.text if that helper isn't available for any reason. */
+  function shareText(x){return typeof window.pmShareFilteredText==='function'?window.pmShareFilteredText(x):String(x?.text||'');}
+  function profileText(x){return [x?.name||'Unnamed profile',x?.age?'Age: '+x.age:'',shareText(x),senderName(x)?'Sent by: '+senderName(x):'',senderPhone(x)?'Sender phone: '+senderPhone(x):''].filter(Boolean).join('\n');}
 
   async function saveShare(k,x,sh,text){
     const ts=typeof stamp==='function'?stamp():new Date().toLocaleString(),link=`v107-${x.id}-${sh.id}-${Date.now()}-${seq++}`;
@@ -114,6 +119,22 @@
      button at the moment that button is (re)created, instead of this file depending on a
      document-wide capture-phase listener to catch the click. */
   window.pmSendSelectedWhatsApp=directWhatsApp;
+
+  /* v115: single shared decision point for "does this WhatsApp tap mean Case B (direct
+     send to the one selected Shadchan)?" — used by BOTH the Guy/Girl selection bar
+     (profile-share-v52.js) and the Shadchanim selection bar (shadchan-share-v55.js) so
+     the two toolbars can never diverge on the answer again. Each bar's own button falls
+     back to its own default behavior (general share / Shadchan-contact-share) only when
+     this returns false — it does not decide anything on its own selection reads. */
+  window.pmRouteSelectedWhatsApp=function(){
+    const shads=window.pmGetSelected('shadchanim');
+    if(shads.length!==1)return false;
+    const guys=window.pmGetSelected('guys'),girls=window.pmGetSelected('girls');
+    if(guys.length&&girls.length){alert('Select only Guy profiles or only Girl profiles (not both) before sending to a Shadchan on WhatsApp.');return true;}
+    if(guys.length){directWhatsApp('guys');return true;}
+    if(girls.length){directWhatsApp('girls');return true;}
+    return false;
+  };
 
   function keepEditTop(){
     const sheet=document.getElementById('sheet'),edit=sheet?.querySelector('#v19EditProfile'),head=sheet?.querySelector('.v19Head');if(!sheet||!edit||!head||sheet.querySelector('.v19ShadHead'))return;
