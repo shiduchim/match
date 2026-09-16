@@ -1,270 +1,270 @@
 # PeerMatch Manual Regression Checklist
 
-PeerMatch has no comprehensive automated regression suite. Because many live scripts monkey-patch the same UI/functions, a fix is not complete until the installed PWA is manually checked.
+PeerMatch has no comprehensive automated regression suite. Because many live scripts monkey-patch the same UI/functions, a runtime fix is not complete until the installed PWA is manually checked.
 
-Use this checklist selectively for small changes and more fully for architecture/layout/share changes.
+Use this checklist selectively for small changes and more fully for layout/share/runtime changes.
 
 ## Before testing
 
 - Confirm `sw.js` `VERSION` was bumped for runtime changes.
 - Confirm any new runtime file is intentionally present in `sw.js` `SCRIPTS`.
-- Confirm dead/historical files were not edited by mistake.
-- Fully close PeerMatch on Android, reopen it, and verify the new `?pmv=<version>`/service-worker update has taken effect.
+- Confirm dead/historical files were not edited expecting live behavior to change.
+- Fully close PeerMatch on Android, reopen it, and confirm the new service worker/version loads.
 - Test the installed PWA, not only desktop browser preview.
 
 ## Smoke test
 
 - App opens without error.
-- Guys list renders.
-- Girls list renders.
-- Shadchanim list renders.
+- Guys, Girls, and Shadchanim lists render.
 - Existing records remain present.
-- Search still filters lists.
+- Search still filters correctly.
 - Checkboxes still work.
-- Opening and closing a detail screen works.
-- Add/Edit forms can still save.
+- Detail screens open/close normally.
+- Add/Edit forms can save.
+- No obvious duplicate blocks appear after opening the same profile repeatedly.
 
-## Guy/Girl detail layout
+## Guy/Girl detail order
 
-For both one Guy and one Girl:
+For both one Guy and one Girl, verify:
 
-- Header appears at top.
-- Name is visible.
-- Photo behavior is unchanged.
-- Edit is top-right, not in body content.
-- `ב״ה` remains in the established header/Edit area if that feature is active.
-- Girl Photo control remains immediately left of Edit.
-- Profile text appears before attachment.
-- Saved attachment appears directly below profile text.
-- Contacts appear below attachment.
-- Quick details / other information appears below Contacts.
-- History/notes appears below the above sections.
-- `Added to PeerMatch` appears low on the page, not near the header.
-- Scrolling does not cause an observer to move attachment or Contacts to a different position after a moment.
+1. header / photo / meta / Edit at top-right,
+2. profile text,
+3. Looking for / To what age when present,
+4. saved attachment,
+5. contacts,
+6. quick details / other information,
+7. history/notes,
+8. Added to PeerMatch low on the page.
 
-Reopen the same detail twice to catch observer/wrapper race conditions.
+Also verify:
+- `ב״ה` remains in its established header/Edit area,
+- Girl Photo remains immediately left of Edit,
+- scrolling or waiting a moment does not cause an observer to move sections,
+- reopening the same detail twice does not duplicate any block.
+
+## v123 — Looking for / To what age
+
+Test Add Guy, Add Girl, Edit Guy, and Edit Girl.
+
+- `Looking for` appears directly under Profile text and is multiline free text.
+- `To what age` appears beside it and is optional.
+- blank values save normally.
+- 18 and 99 are accepted.
+- invalid values below 18, above 99, or non-integer are blocked.
+- existing values prefill on Edit.
+- changing values then Save persists them.
+- clearing an existing value then Save persists the clear.
+- changing values then Cancel leaves the saved record unchanged.
+- existing older profiles with neither field still open and save normally.
+- after Save, detail shows the block below Profile and before Attachment.
+- repeated open/edit/save cycles do not create duplicate form/detail blocks.
 
 ## Attachment — image
 
-Use an existing image/screenshot attachment and, if needed, add a new test image.
-
-- Attachment remains saved after closing/reopening app.
-- Open attachment displays the image in-app.
-- No broken new browser tab is opened.
+- Existing image remains saved after restart.
+- Open attachment displays image in-app.
+- No broken new browser tab opens.
 - Close viewer works.
-- Share/save fallback still works if present.
-- Detail layout remains Profile -> Attachment -> Contacts after opening/closing image.
+- Detail order remains correct afterward.
 
-## Attachment — PDF (v113 fix, pending device verification)
+## Attachment — PDF
 
-v111 tried an in-app PDF.js renderer; v112 tried share-then-download. Neither actually ran for Guy/Girl attachments — a separate, unrelated file (`whatsapp-import-v61.js`) was creating its own competing attachment box that always won and silently made both fixes dead code. v113 removes that competing box AND switches the PDF action to a guaranteed synchronous download (no share attempt). Use a known-good PDF that PeerMatch can parse/store.
+The v113 direct-download path was device-verified; keep it as a regression test.
 
-- PDF is still attached after save and app restart.
-- Tap Open PDF on a **Guy or Girl** profile (this is specifically the path that was broken — the v61 competing box only affected `openP`, not Shadchan detail).
-- It must NOT navigate to `blob://localhost/...` and must NOT open an unavailable Chrome tab.
-- It must NOT attempt to render inside PeerMatch and must NOT show an Android share sheet — it should download immediately.
-- Confirm an alert appears saying the PDF was downloaded and where to find it.
-- Open Android's Downloads (or the browser's downloads/notifications) and confirm the file is there with a sensible name, and that it opens correctly in a PDF viewer from there.
-- The stored attachment is unaffected — reopen the same record and confirm Open PDF still works, repeatedly.
-- Tap Open PDF on a **Shadchan** with a PDF attachment too (this path was not affected by the v61 bug, but confirm the same reliable-download behavior applies there as well, and that the compact header-tile placement/label is unchanged).
-- Confirm image attachments are unaffected: Open attachment for an image still opens the in-app image viewer exactly as before, including its own Share/save button (which still offers Share first, then download).
-
-Test on the installed Android PWA — this is specifically about Android's download behavior, so desktop Chrome is not representative.
+- PDF remains attached after save/restart.
+- Open PDF does not navigate to `blob://localhost/...`.
+- It downloads directly rather than opening a broken browser tab.
+- Alert explains that the PDF was downloaded.
+- File appears in Android Downloads with a sensible name and opens normally.
+- Reopening the profile and downloading again still works.
+- Image attachment behavior remains unaffected.
 
 ## Add/Edit attachment form
 
-For Guy/Girl and Shadchan forms where applicable:
-
-- Attach PDF/screenshot button still opens the file picker.
+- Attach PDF/screenshot opens file picker.
 - Remove works.
 - File name/status displays.
-- Parsing/OCR may fill only empty fields.
-- Existing typed fields are not overwritten by extracted text.
-- Save keeps the attachment even if OCR/parser fails.
-- Form attachment control placement should not be confused with saved-detail attachment placement.
+- Parsing/OCR fills only empty fields.
+- Existing typed fields are not overwritten.
+- Save keeps attachment even if OCR/parser fails.
 
-## Contacts
+## Contacts and phone normalization
 
 For Guy/Girl:
+- Profile phone persists.
+- Contact 1 and Contact 2 names/phones persist.
+- Legacy sender/source synchronization still works.
+- Contacts appear below Attachment.
+- Contact actions target the correct number.
 
-- Profile phone field persists.
-- Contact 1 name/phone persist.
-- Contact 2 name/phone persist.
-- Legacy sender/source fields still synchronize as intended.
-- Contacts detail block appears below attachment.
-- Contact actions open the correct number.
-- Editing a profile does not duplicate Contacts blocks.
-
-## Israeli phone normalization
-
-Test at least:
-
-- `+972 50 ...` -> local `050...` display/storage where recognized.
+Phone cases:
+- `+972 50...` -> local `050...` display/storage where recognized.
 - `00972...` -> local form.
 - local `05x...` remains local.
-- WhatsApp helper converts local Israeli mobile to `972...`.
-- Israeli landline is not offered invalid SMS behavior if existing UI suppresses it.
-- +1/other non-Israeli number is not rewritten as Israeli.
-- Pasting a profile with Contact 1 phone using +972 does not leave raw `972` in Contact 1 after save.
+- WhatsApp converts Israeli local mobile to `972...`.
+- +1/other international numbers are preserved.
 
 ## Core selection persistence
 
-This is critical for the WhatsApp selected-recipient workflow.
-
-- Check one Guy.
-- Switch to Shadchanim.
-- Check one Shadchan.
-- Switch back to Guys.
-- Guy must still show selected.
-- Switch back to Shadchanim.
-- Shadchan must still show selected.
+- Check one Guy; switch tabs; check one Shadchan; both stay selected.
 - Repeat with Girl.
-- Search/filtering should not silently remap a selected checkbox to a different record.
-- Referral/grouped/collapsed Shadchan cards must map selection to the correct actual Shadchan record.
+- Search/filtering does not remap selection to another record.
+- Grouped/collapsed Shadchan cards preserve the real selected record.
+- Any sharing code uses `window.pmGetSelected(k)`, not DOM card position.
 
-## Selected profile -> selected Shadchan -> WhatsApp (v113 + v114 + v115 fix, pending device verification)
+## WhatsApp — profile(s) + one selected Shadchan
 
-v113 removed two independent DOM-position-based selection reconstructions: `final-fixes-v107.js` now reads `window.pmGetSelected(k)` (the real Set from `peermatch-v11.js`) as the authoritative selection source. v114 restored `profile-share-v52.js`'s general-recipient WhatsApp path (Case A, see below — it was over-aggressively deleted at v113 and has been recovered and re-pointed at `window.pmGetSelected`), added a direct "send to selected Shadchan" path (Case B) that reuses the exact same helper (`window.pmWhatsAppUrl`) the ordinary Shadchan-detail WhatsApp button uses, routes between the two at the button's own creation site instead of a document-wide listener, and — for Case B with multiple selected profiles — sends them one at a time through a persistent tap-per-profile queue rather than merging them into one message.
+This flow was device-verified from v115/v116; keep as regression test.
 
-**v115 is the fix that actually makes any of this reachable.** The user reported the v114 behavior still didn't work — a previously-untraced file, `profile-tools-v62.js`, ran a `window`-level (not `document`-level) capture-phase click listener that always intercepted the Guy/Girl WhatsApp button first, before v114's own button binding could ever run, and diverted it to an unrelated bare-`wa.me` share ignoring any selected Shadchan. `profile-tools-v62.js`'s listener no longer matches WhatsApp at all (only Email/SMS, unchanged). Separately, `shadchan-share-v55.js`'s own WhatsApp button (on the Shadchanim tab's own selection bar) is now routed through the same shared decision function, `window.pmRouteSelectedWhatsApp()`, so pressing WhatsApp from either tab behaves identically. Test with several known profiles and one known Shadchan with a valid WhatsApp number, on **both** the Guys/Girls tab and the Shadchanim tab.
+- Select exactly one Guy or Girl + exactly one Shadchan.
+- Press WhatsApp from the Guy/Girl toolbar: exact selected Shadchan opens with profile text.
+- Repeat from the Shadchanim toolbar: behavior is identical.
+- Returning from WhatsApp reveals PeerMatch, not `api.whatsapp.com` / “Share on WhatsApp”.
+- If profile has photo, PeerMatch asks `Send <Name>’s photo?` with **Yes / No**.
+- Yes shares photo only; No skips it.
+- No-photo profile does not show the photo question.
+- Profile history and Shadchan history each get the correct paired entry.
 
-- **First confirm the ordinary Shadchan-detail WhatsApp button still works exactly as before** (open a Shadchan, tap WhatsApp, type a message, tap Continue) — this is the reference behavior Case B reuses; if this regresses, the shared helper broke something.
-- **This is the critical regression check for v115:** select exactly one Guy (or Girl) and exactly one Shadchan, then press WhatsApp from the **Guy/Girl tab's own selection toolbar**. WhatsApp must open directly to that Shadchan's number with the profile prefilled — not a bare WhatsApp contact picker. This is the exact scenario that failed after v114 and must be re-verified first before any other test in this section is meaningful.
-- Repeat the same check pressing WhatsApp from the **Shadchanim tab's own selection toolbar** instead (same Guy + same Shadchan both still selected) — must produce the identical result.
-- Select one Guy **and** one Girl at the same time, plus one Shadchan, and press WhatsApp from either tab — expect a clear alert asking to select only Guys or only Girls, not both; nothing should send silently or guess which profile to use.
-- Confirm Email and SMS for selected Guys/Girls (with the language-flag-filter dialog) still work exactly as before — `profile-tools-v62.js`'s listener for those two channels was intentionally left untouched.
+For multiple profiles + one Shadchan:
+- profiles send one at a time,
+- no merged profile message,
+- each profile gets its own optional photo step,
+- queue survives returning from WhatsApp,
+- Cancel clears remaining queue.
 
-### Case A — profile(s) selected, no Shadchan selected (must be unchanged)
+## WhatsApp — profile(s), no Shadchan selected
 
-- Select one or more profiles, select **no** Shadchan.
-- Press WhatsApp from the selected-profile toolbar.
-- The existing recipient-choice dialog appears (pick an existing Shadchan or type a name/phone) exactly as before v113/v114 — this must not have regressed or been replaced by the direct-send path.
-- Confirm the existing "share multiple profiles one at a time" queue dialog still appears when 2+ profiles are selected, and Web-Share-with-photo-then-`wa.me`-fallback behavior is unchanged.
-- Confirm SMS-for-selected-profiles still works unchanged (shares this file with the restored/changed code — verify no regression).
+Current owner is `v120-general-whatsapp.js`.
 
-### Case A (Shadchanim tab) — Shadchan(s) selected, no Guy/Girl selected (must be unchanged)
+- Recipient dialog appears.
+- Existing Shadchan can be chosen.
+- Name/phone can be typed.
+- Phone may be left blank; WhatsApp opens for manual recipient choice.
+- With a phone, exact recipient opens directly.
+- Returning from WhatsApp reveals PeerMatch, not the browser intermediary.
+- Text is first; optional photo Yes/No follows only if a photo exists.
+- Multiple profiles are sent separately.
 
-- Select one or more Shadchanim, select **no** Guy or Girl.
-- Press WhatsApp from the Shadchanim tab's own selection toolbar.
-- The pre-existing "share this Shadchan's own contact card" behavior runs exactly as before (single Shadchan sends immediately; 2+ Shadchanim show the existing one-at-a-time queue dialog) — this must not have been replaced by the direct-send-to-Shadchan path.
+## WhatsApp — one profile + multiple Shadchanim
 
-### Case B — exactly one Shadchan selected (single profile)
+Current owner is `v119-multi-shadchan.js`.
 
-- Select exactly one profile and exactly one Shadchan.
-- Press WhatsApp from selected-profile toolbar.
-- WhatsApp opens the selected Shadchan's chat/number directly — no recipient picker dialog (that dialog belongs to Case A only).
-- Profile text is prefilled.
-- The phone is normalized correctly for WhatsApp — compare against how the *same* Shadchan's number resolves via the ordinary Shadchan-detail WhatsApp button; they must produce identical digits since both go through `window.pmWhatsAppUrl`.
-- Before handoff, profile history receives exactly one send/open entry; Shadchan history receives exactly one corresponding entry; no duplicates.
-- No bottom "Send profile N of M" bar appears for a single profile — that queue UI is only for 2+ profiles.
-- Returning to PeerMatch does not corrupt selection state.
-- Toggle several checkboxes on and off a few times (to exercise the selection-bar rebuild), then press WhatsApp — it must still fire reliably; this is the specific instability (`ensureSelectionBar()`'s `innerHTML=` rebuild destroying/recreating the button) the v114 direct-binding change targets.
-- No photo/image is attached by this flow yet (deferred by design) — confirm the message is text-only and no share sheet/file picker appears.
+- Select one profile and two or more Shadchanim.
+- Shadchan 1 gets text first.
+- Return -> optional photo Yes/No.
+- Then Shadchan 2 text -> optional photo, etc.
+- Profiles without photos skip photo step.
+- History remains separate for each recipient.
+- Returning from WhatsApp does not expose `api.whatsapp.com`.
 
-### Case B — exactly one Shadchan selected (multiple profiles, new v114 queue)
+## WhatsApp — Shadchan contact/profile sharing
 
-- Select **three** profiles and exactly one Shadchan.
-- Press WhatsApp: the first profile's WhatsApp chat opens immediately (this tap is that profile's one required tap) — confirm the message contains **only that one profile's text**, never all three merged.
-- Confirm exactly one history entry pair (profile + Shadchan) was written for that first profile only so far.
-- Return to PeerMatch (e.g. app-switch back). A bottom bar should read "Send profile 2 of 3 to <Shadchan name>".
-- Confirm no second `wa.me` navigation happened automatically — it must wait for an explicit tap on the bar's Send button.
-- Tap Send: WhatsApp opens again with only profile 2's text; history gets exactly one new pair for profile 2.
-- Repeat for profile 3; after it sends, the bottom bar disappears (queue empty).
-- Confirm total history: each of the 3 profiles has exactly one send entry, the Shadchan has exactly 3 received entries (one per profile), never one merged entry.
-- Test **losing focus while WhatsApp is open mid-queue**: after profile 1 sends and the bar shows "2 of 3", background/switch away from PeerMatch for a while (or fully close and reopen the installed PWA) before returning — the bar must still show "2 of 3" and Send must still work correctly, not have lost or duplicated the queue.
-- Test **Cancel** on the bar: confirm it clears the queue and no further profiles from that batch are sent.
-- Test reopening a detail screen or toggling other checkboxes while the queue bar is showing — it must persist (re-created by the same polish cycle that reinforces `keepEditTop()`), not disappear or get stuck behind other UI.
+- Select one Shadchan with no Guy/Girl selected.
+- Share Shadchan contact/profile via WhatsApp.
+- Android opens WhatsApp directly.
+- Exiting WhatsApp reveals PeerMatch, not the blue `Share on WhatsApp` browser page.
+- Multiple Shadchan contact cards still use the intended separate-share behavior.
 
-### Alerts (Case B edge cases)
+## Make Match -> WhatsApp — v122 final device check
 
-Confirm a clear `alert()` appears rather than nothing happening or the wrong Shadchan being used:
-- no Shadchan selected with 1 profile selected — this is Case A, not an alert (see above);
-- more than one Shadchan selected — expect "Select only one Shadchan..." alert;
-- selected Shadchan has no phone — expect the "needs a phone number" alert, and no queue is created.
+This is the newest Android deep-link change that still needs explicit final device confirmation.
 
-Specifically retest Case B with a **referred/grouped Shadchan** selected while collapsed (see "Referral/grouped Shadchan list" below) — this was the concrete mechanism identified for why the old DOM-position approach could pick the wrong Shadchan or miscount.
+- Select exactly one Guy and one Girl; optionally one Shadchan.
+- Open Make Match.
+- Recipient selector matches the real selected records.
+- WhatsApp opens the intended recipient with the message.
+- Exit WhatsApp.
+- PeerMatch should be underneath; `api.whatsapp.com` / “Share on WhatsApp” must not appear.
+- Match history is written to the correct Guy/Girl/Shadchan records.
+- SMS/Email/Contact actions remain unchanged.
+
+## Ordinary Shadchan detail WhatsApp
+
+- Open a Shadchan detail.
+- Tap WhatsApp, type message, Continue.
+- Correct Shadchan number opens.
+- Message is recorded once.
+- Returning to PeerMatch behaves normally.
+
+## Guy/Girl contact-person WhatsApp
+
+- Open a Guy/Girl profile with a contact person.
+- Tap the contact-person WhatsApp action.
+- Correct phone opens.
+- No unwanted browser intermediary remains after exiting WhatsApp.
+
+## History deletion — v117/v122
+
+Test both new and older share history.
+
+- Delete a normal unrelated history entry: only that entry disappears.
+- Delete a mirrored profile<->Shadchan WhatsApp share: both true linked copies disappear.
+- Wait/reopen app: deleted mirrored share does not reappear via `dual-share-history-v100.js`.
+- If two unrelated records happen to contain the same numeric/timestamp-style activity ID, deleting one must not delete the other.
+- Older mirror records using `mirroredFromProfileActivityId` / `mirroredFromShadchanActivityId` still delete as a pair.
 
 ## Incoming Android Share -> PeerMatch
 
 - Share plain profile text to PeerMatch.
-- App opens/imports pending share.
-- Share an image to PeerMatch.
-- Share a PDF to PeerMatch.
+- Share image to PeerMatch.
+- Share PDF to PeerMatch.
 - Pending item is consumed only once.
-- Imported profile does not duplicate on reopen.
+- Import does not duplicate on reopen.
 - Text/file are not lost if parsing fails.
 
-## Shadchan detail
+## Shadchan detail / reminders
 
 - Edit works.
-- Phone/contact actions still target correct record.
-- Referral/group information still renders.
-- Shadchan attachment, if present, opens through the intended single attachment viewer.
-- Call today / Call tomorrow / Clear reminder behaviors remain Shadchan-only.
-- Added date is low on detail page.
-
-## Referral/grouped Shadchan list
-
-- Parent/child/referral visual grouping still works.
-- Expand/collapse still works.
-- Checkbox on a child selects that child, not its parent or a data-index neighbor.
-- Search results keep record identity correct.
-- WhatsApp selected-recipient flow still chooses the exact checked record.
-- Check a Shadchan, then collapse the group it belongs to (hiding its card): confirm the WhatsApp selected-send flow still targets that same Shadchan correctly (this is the specific stale-checked-but-hidden scenario `docs/KNOWN_ISSUES.md` issue #2 identifies as the likely concrete trigger for the old bug).
-
-## History
-
-- Text note saves.
-- Audio note saves where browser permissions allow.
-- Existing old activity entries still render.
-- WhatsApp/SMS/Email/Call history isn't duplicated after one action.
-- Profile <-> Shadchan mirrored share history refers to the correct counterpart.
-- Deleting/clearing unrelated UI does not erase history.
+- Phone/contact actions target correct record.
+- Referral/group information renders.
+- Shadchan attachment opens correctly.
+- Call today / Call tomorrow / Clear reminder remain Shadchan-only.
+- Added date remains low on detail page.
 
 ## Waiting status
 
-Where active:
-
 - Waiting control remains near intended actions.
-- active waiting state is visually distinct (yellow as previously chosen).
+- active state is yellow/distinct.
 - inactive state is gray/neutral.
-- opening/editing profile does not reset waiting unexpectedly.
+- opening/editing profile does not reset it unexpectedly.
 
-## Added date — v109
+## Added date
 
-Test a newly created Guy, Girl, and Shadchan:
+New records:
+- date matches creation time reasonably,
+- editing later does not change it.
 
-- date matches creation time reasonably.
-- editing later does not change original date.
+Older records:
+- recoverable timestamp from ID is plausible,
+- unrecoverable old record is not falsely labeled as added today,
+- date remains low on detail page.
 
-Test older records:
+## GitHub Pages / service worker — v122 regression test
 
-- recoverable timestamp from record ID shows plausible original date.
-- unrecoverable old record is not falsely labeled as added today.
-- date remains at bottom/low in detail layout.
+- GitHub Pages deploy succeeds.
+- Deploy workflow reads VERSION/SCRIPTS from `sw.js`.
+- Every live runtime file exists.
+- App shell loads after deployment.
+- Installed PWA updates after full close/reopen.
+- Old `peermatch-v*` caches are removed.
+- Unrelated origin caches are not removed.
+- Offline shell still opens where expected.
+- Existing IndexedDB data remains readable.
 
 ## Backup / restore
 
 Before any persistence migration or broad refactor:
-
-- create/export a backup using the existing backup feature,
+- create/export a backup,
 - verify a backup file is produced,
-- do not test destructive restore on the only valuable dataset unless a safe copy exists.
+- do not test destructive restore on the only valuable dataset without a safe copy.
 
-## Offline / flaky network
+## Final check before declaring a change finished
 
-- App shell still opens from service-worker cache when offline where expected.
-- Existing local records remain readable.
-- features requiring external CDNs fail gracefully.
-- failed PDF/OCR engine loading does not remove attachment.
-
-## Final check before declaring a bug fixed
-
-For each reported bug, state exactly:
-- which live owner was changed,
+State exactly:
+- which live owner changed,
 - which conflicting old behavior was removed/disabled,
 - which device/browser was tested,
 - whether installed-PWA testing passed,
-- what was not tested.
+- what remains untested.
 
-Do not say "fixed" merely because the code path looks correct.
+Do not say a runtime behavior is device-verified merely because CI/deployment passed or the code path looks correct.
