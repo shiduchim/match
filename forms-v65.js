@@ -1,4 +1,4 @@
-/* PeerMatch v65: religious level fields and small form fixes. */
+/* PeerMatch v96: religious level/details fields and small form fixes. */
 (function(){
   let activeProfile=null,activeShad=null,queued=false;
   const style=document.createElement('style');
@@ -15,24 +15,31 @@
   const rec=(k,id)=>(data[k]||[]).find(x=>String(x.id)===String(id))||null;
   const title=()=>String(document.querySelector('#sheet h2')?.textContent||'').trim();
   const kind=()=>/Guy/i.test(title())?'guys':/Girl/i.test(title())?'girls':'';
-  function clamp(v){v=String(v||'').trim();if(v==='')return'';const n=Number(v);return Number.isFinite(n)?String(Math.max(0,Math.min(10,n))):'';}
+  const text=v=>String(v||'').trim();
 
-  function profileField(){
-    const tags=document.getElementById('pmV62FormTags');if(!tags||document.getElementById('pmV65RelForm'))return;
-    const k=kind();if(!k)return;const edit=/^Edit\b/i.test(title()),x=edit&&activeProfile?.k===k?rec(k,activeProfile.id):null;
-    const lab=document.createElement('label');lab.id='pmV65RelForm';lab.appendChild(document.createTextNode('Religious level 0-10'));
-    const inp=document.createElement('input');inp.type='number';inp.min='0';inp.max='10';inp.inputMode='numeric';inp.placeholder='0-10';inp.value=x?.religiousLevel??'';lab.appendChild(inp);tags.closest('label')?.insertAdjacentElement('afterend',lab);
-    const before=new Set((data[k]||[]).map(z=>String(z.id))),saveBtn=document.getElementById('v19Save');if(!saveBtn)return;
-    saveBtn.addEventListener('click',()=>{const v=clamp(inp.value);inp.value=v;if(edit&&x){x.religiousLevel=v;setTimeout(()=>{x.religiousLevel=v;save();},180);}else setTimeout(()=>{const n=(data[k]||[]).find(z=>!before.has(String(z.id)));if(n){n.religiousLevel=v;save();}},220);},true);
+  function makeField(id,label,value,placeholder){
+    const lab=document.createElement('label');lab.id=id;lab.appendChild(document.createTextNode(label));
+    const inp=document.createElement('input');inp.type='text';inp.autocomplete='off';inp.placeholder=placeholder||'';inp.value=value==null?'':String(value);lab.appendChild(inp);return{lab,inp};
   }
 
-  function shadField(){
+  function profileFields(){
+    const tags=document.getElementById('pmV62FormTags');if(!tags||document.getElementById('pmV65RelForm'))return;
+    const k=kind();if(!k)return;const edit=/^Edit\b/i.test(title()),x=edit&&activeProfile?.k===k?rec(k,activeProfile.id):null;
+    const rel=makeField('pmV65RelForm','Religious level',x?.religiousLevel,'e.g. strong, moderate, light');
+    const det=makeField('pmV65RelDetailsForm','Religious details',x?.religiousDetails,'e.g. Chabad, Breslev, Yeshivish, tzniut, long skirt');
+    tags.closest('label')?.insertAdjacentElement('afterend',rel.lab);rel.lab.insertAdjacentElement('afterend',det.lab);
+    const before=new Set((data[k]||[]).map(z=>String(z.id))),saveBtn=document.getElementById('v19Save');if(!saveBtn)return;
+    saveBtn.addEventListener('click',()=>{const rv=text(rel.inp.value),dv=text(det.inp.value);if(edit&&x){x.religiousLevel=rv;x.religiousDetails=dv;setTimeout(()=>{x.religiousLevel=rv;x.religiousDetails=dv;save();},180);}else setTimeout(()=>{const n=(data[k]||[]).find(z=>!before.has(String(z.id)));if(n){n.religiousLevel=rv;n.religiousDetails=dv;save();}},240);},true);
+  }
+
+  function shadFields(){
     const tags=document.getElementById('st')||document.getElementById('v19STags')||document.getElementById('esTags');if(!tags||document.getElementById('pmV65ShadRel'))return;
     const edit=/^Edit\b/i.test(title()),x=edit&&activeShad!=null?rec('shadchanim',activeShad):null;
-    const lab=document.createElement('label');lab.id='pmV65ShadRel';lab.appendChild(document.createTextNode('Religious level 0-10'));
-    const inp=document.createElement('input');inp.type='number';inp.min='0';inp.max='10';inp.inputMode='numeric';inp.placeholder='0-10';inp.value=x?.religiousLevel??'';lab.appendChild(inp);tags.closest('label')?.insertAdjacentElement('afterend',lab);
+    const rel=makeField('pmV65ShadRel','Religious level',x?.religiousLevel,'e.g. strong, moderate, light');
+    const det=makeField('pmV65ShadRelDetails','Religious details',x?.religiousDetails,'e.g. Chabad, Breslev, Yeshivish, tzniut, long skirt');
+    tags.closest('label')?.insertAdjacentElement('afterend',rel.lab);rel.lab.insertAdjacentElement('afterend',det.lab);
     const before=new Set((data.shadchanim||[]).map(z=>String(z.id))),saveBtn=document.getElementById('v19Save')||document.getElementById('pmFormSave')||document.getElementById('ss');if(!saveBtn)return;
-    saveBtn.addEventListener('click',()=>{const v=clamp(inp.value);inp.value=v;if(edit&&x){x.religiousLevel=v;setTimeout(()=>{x.religiousLevel=v;save();},180);}else setTimeout(()=>{const n=(data.shadchanim||[]).find(z=>!before.has(String(z.id)));if(n){n.religiousLevel=v;save();}},220);},true);
+    saveBtn.addEventListener('click',()=>{const rv=text(rel.inp.value),dv=text(det.inp.value);if(edit&&x){x.religiousLevel=rv;x.religiousDetails=dv;setTimeout(()=>{x.religiousLevel=rv;x.religiousDetails=dv;save();},180);}else setTimeout(()=>{const n=(data.shadchanim||[]).find(z=>!before.has(String(z.id)));if(n){n.religiousLevel=rv;n.religiousDetails=dv;save();}},240);},true);
   }
 
   function phone2Save(){
@@ -42,7 +49,7 @@
 
   const p=window.openP;if(typeof p==='function')window.openP=function(k,id){activeProfile={k,id};return p(k,id);};
   const s=window.openS;if(typeof s==='function')window.openS=function(id){activeShad=id;return s(id);};
-  function polish(){profileField();shadField();phone2Save();}
+  function polish(){profileFields();shadFields();phone2Save();}
   function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;polish();});}
   new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});schedule();
 })();
