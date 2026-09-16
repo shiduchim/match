@@ -1,27 +1,15 @@
-/* PeerMatch v117: small UI cleanup for the v116 WhatsApp follow-up bar.
-   - Strip markdown asterisks from names shown in the bottom queue label only.
-   - Replace the photo-skip cross with a skip symbol (no X/cross icon).
-*/
+/* PeerMatch v122: keep the v116 queue label clean without fighting newer UI owners.
+   v119 now owns the Yes / No photo buttons. This helper only strips markdown asterisks
+   from the older v116 queue label, avoiding the old v117 symbol-vs-No observer loop. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='117';
+  document.documentElement.dataset.peerMatchVersion='122';
 
   function clean(){
     const label=document.getElementById('pmWaQueueLabel');
-    if(label){
-      const t=String(label.textContent||'');
-      const cleaned=t.replace(/\*/g,'');
-      if(cleaned!==t)label.textContent=cleaned;
-    }
-
-    const skip=document.getElementById('pmWaPhotoSkip');
-    if(skip){
-      if(skip.textContent!=='⏭')skip.textContent='⏭';
-      if(skip.title!=='Skip photo')skip.title='Skip photo';
-      if(skip.getAttribute('aria-label')!=='Skip photo')skip.setAttribute('aria-label','Skip photo');
-      skip.style.minWidth='42px';
-      skip.style.fontSize='18px';
-      skip.style.lineHeight='1';
-    }
+    if(!label)return;
+    const t=String(label.textContent||'');
+    const cleaned=t.replace(/\*/g,'');
+    if(cleaned!==t)label.textContent=cleaned;
   }
 
   let queued=false;
