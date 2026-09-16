@@ -14,7 +14,8 @@
       margin:0 0 8px;
     }
     #sheet .pmV123LookingForm label{min-width:0;margin:8px 0 0!important}
-    #sheet .pmV123LookingForm input{min-width:0;width:100%}
+    #sheet .pmV123LookingForm input,#sheet .pmV123LookingForm textarea{min-width:0;width:100%}
+    #sheet .pmV123LookingForm textarea{min-height:72px!important;resize:vertical}
     #sheet .pmV123LookingDetail{
       background:#fff;
       border:1px solid var(--line);
@@ -26,6 +27,7 @@
       overflow-wrap:anywhere;
     }
     #sheet .pmV123LookingTitle{font-size:11px;font-weight:900;color:var(--muted);margin-bottom:3px}
+    #sheet .pmV123LookingText{white-space:pre-wrap}
     #sheet .pmV123LookingAge{margin-top:5px;font-size:12px;color:var(--text)}
     #sheet .pmV123LookingAge b{font-weight:850}
     @media(max-width:390px){
@@ -89,7 +91,7 @@
     block.id='pmV123LookingForm';
     block.className='pmV123LookingForm';
     block.innerHTML=`
-      <label>Looking for<input id="pmV123LookingFor" placeholder="What are they looking for?"></label>
+      <label>Looking for<textarea id="pmV123LookingFor" placeholder="What are they looking for?"></textarea></label>
       <label>To what age<input id="pmV123LookingAge" type="number" min="18" max="99" inputmode="numeric" placeholder="Age"></label>`;
     profile.closest('label')?.insertAdjacentElement('afterend',block);
     block.querySelector('#pmV123LookingFor').value=trim(x?.lookingFor);
@@ -132,7 +134,7 @@
     const box=document.createElement('div');box.className='pmV123LookingDetail';
     if(looking){
       const title=document.createElement('div');title.className='pmV123LookingTitle';title.textContent='Looking for';
-      const text=document.createElement('div');text.textContent=looking;
+      const text=document.createElement('div');text.className='pmV123LookingText';text.textContent=looking;
       box.append(title,text);
     }
     if(age){
@@ -143,7 +145,7 @@
 
     const profileCard=sheet.querySelector('.card > .profileText')?.closest('.card');
     const audio=sheet.querySelector('.v19ProfileAudio');
-    const anchor=profileCard||audio||sheet.querySelector('.pmMeta')||sheet.querySelector('.v19Head');
+    const anchor=audio||profileCard||sheet.querySelector('.pmMeta')||sheet.querySelector('.v19Head');
     anchor?.insertAdjacentElement('afterend',box);
   }
 
