@@ -1,8 +1,7 @@
 /* PeerMatch v122: delete individual conversation/history entries permanently.
    WhatsApp profile-share history can exist on both the profile and Shadchan sides.
-   Deleting only one side allowed dual-share-history-v100.js to recreate it on its next
-   reconciliation pass. Deletion removes the selected entry plus its true linked/mirrored
-   partner, without globally deleting an unrelated activity that happens to share an id. */
+   Deleting one side now removes only the selected entry and its true linked/mirrored
+   partner; unrelated activities with a coincidentally identical timestamp/id are kept. */
 (function(){
   document.documentElement.dataset.peerMatchVersion='122';
 
@@ -49,16 +48,11 @@
 
   function idKey(v){return v==null?'':String(v);}
 
-  /* Remove exactly the selected entry and any true paired copy.
-     Newer shares use one shared shareLinkId. Older mirrored entries reference the source
-     activity id with mirroredFromProfileActivityId / mirroredFromShadchanActivityId. */
   function removeLinkedEntries(recordKind,recordId,target){
     const link=String(target?.shareLinkId||'');
     const targetId=idKey(target?.id);
-    const sourceIds=new Set([
-      idKey(target?.mirroredFromProfileActivityId),
-      idKey(target?.mirroredFromShadchanActivityId)
-    ].filter(Boolean));
+    const sourceProfileId=idKey(target?.mirroredFromProfileActivityId);
+    const sourceShadId=idKey(target?.mirroredFromShadchanActivityId);
     let removed=0;
 
     for(const k of ['shadchanim','guys','girls']){
@@ -66,17 +60,15 @@
         if(!Array.isArray(record.activities))continue;
         const selectedRecord=k===recordKind&&String(record.id)===String(recordId);
         for(let i=record.activities.length-1;i>=0;i--){
-          const a=record.activities[i];
-          const aId=idKey(a?.id);
+          const a=record.activities[i],aId=idKey(a?.id);
           const fromProfile=idKey(a?.mirroredFromProfileActivityId);
           const fromShad=idKey(a?.mirroredFromShadchanActivityId);
           const sameSelected=selectedRecord&&(a===target||(targetId&&aId===targetId));
           const sameLink=!!link&&String(a?.shareLinkId||'')===link;
-          const isSource=!!aId&&sourceIds.has(aId);
-          const referencesSelected=(!!targetId&&(fromProfile===targetId||fromShad===targetId))||
-            (!!fromProfile&&sourceIds.has(fromProfile))||
-            (!!fromShad&&sourceIds.has(fromShad));
-          if(sameSelected||sameLink||isSource||referencesSelected){record.activities.splice(i,1);removed++;}
+          const sourceOfSelected=(!!sourceProfileId&&k!=='shadchanim'&&aId===sourceProfileId)||
+            (!!sourceShadId&&k==='shadchanim'&&aId===sourceShadId);
+          const mirrorsSelected=!!targetId&&(fromProfile===targetId||fromShad===targetId);
+          if(sameSelected||sameLink||sourceOfSelected||mirrorsSelected){record.activities.splice(i,1);removed++;}
         }
       }
     }
