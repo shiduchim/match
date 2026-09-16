@@ -1,6 +1,9 @@
-/* PeerMatch v33: audio-only profiles remain valid for fast entry; normal Profile text is required only before sending/sharing a match. */
+/* PeerMatch v122: audio-only profiles remain valid for fast entry; normal Profile text
+   is required only before sending/sharing a match. Selection now comes from the same
+   ID-based source used by the rest of the current app, with the old DOM mapping only as
+   a compatibility fallback. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='33';
+  document.documentElement.dataset.peerMatchVersion='122';
 
   function senderName(x){return String(x?.sourceName||x?.source||'').trim();}
   function senderPhone(x){return String(x?.sourcePhone||'').trim();}
@@ -17,6 +20,9 @@
   }
 
   function checkedRecords(k){
+    if(typeof window.pmGetSelected==='function'){
+      try{return window.pmGetSelected(k)||[];}catch(e){}
+    }
     const listId=k==='shadchanim'?'shadchanList':k+'List';
     const list=document.getElementById(listId);
     if(!list)return[];
