@@ -1,6 +1,6 @@
-/* PeerMatch v106: keep profile text first, then attachment and contacts. */
+/* PeerMatch v107: profile text first, then attachment and contacts; Edit stays in top-right header. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='106';
+  document.documentElement.dataset.peerMatchVersion='107';
 
   const style=document.createElement('style');
   style.textContent=`
@@ -25,7 +25,6 @@
       font-weight:850!important
     }
     #sheet .pmV96Contacts{margin:8px 0 7px!important}
-    #v19EditProfile{margin:8px 0 10px!important}
   `;
   document.head.appendChild(style);
 
@@ -39,31 +38,22 @@
 
     const attachment=sheet.querySelector('.pmV63Attachment:not(.pmV67ShadAttachment)');
     const contacts=sheet.querySelector('.pmV96Contacts');
-    const edit=document.getElementById('v19EditProfile');
 
     let anchor=profileCard;
     if(attachment){
       attachment.classList.add('pmV85ProfileAttachment');
-      const btn=attachment.querySelector('button');
-      if(btn&&!/Open PDF|Open attachment/i.test(btn.textContent||''))btn.textContent='Open attachment';
       if(anchor.nextElementSibling!==attachment)anchor.insertAdjacentElement('afterend',attachment);
       anchor=attachment;
     }
-
     if(contacts){
       if(anchor.nextElementSibling!==contacts)anchor.insertAdjacentElement('afterend',contacts);
-      anchor=contacts;
     }
 
-    if(edit&&anchor.nextElementSibling!==edit)anchor.insertAdjacentElement('afterend',edit);
+    /* Do not move #v19EditProfile here. edit-buttons-v77.js owns it in the top-right header. */
   }
 
   let queued=false;
-  function schedule(){
-    if(queued)return;
-    queued=true;
-    requestAnimationFrame(()=>{queued=false;profileDetail();});
-  }
+  function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;profileDetail();});}
   new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
   schedule();
 })();
