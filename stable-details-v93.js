@@ -1,6 +1,6 @@
-/* PeerMatch v94: stable detail editor that is never reparented while typing. */
+/* PeerMatch v96: stable detail editor that is never reparented while typing. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='94';
+  document.documentElement.dataset.peerMatchVersion='96';
   let active=null,queued=false;
 
   const style=document.createElement('style');
@@ -49,8 +49,8 @@
   const current=()=>active?rec(active.k,active.id):null;
 
   function saveQuiet(){
-    try{const p=save();if(p?.catch)p.catch(e=>console.warn('PeerMatch v94 save',e));}
-    catch(e){console.warn('PeerMatch v94 save',e);}
+    try{const p=save();if(p?.catch)p.catch(e=>console.warn('PeerMatch v96 save',e));}
+    catch(e){console.warn('PeerMatch v96 save',e);}
   }
 
   function isDetail(sheet){
@@ -65,6 +65,16 @@
     el.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
   }
 
+  function addField(box,label,value,placeholder,key){
+    const row=document.createElement('label');row.className='pmV93Field';
+    const lab=document.createElement('span');lab.textContent=label;
+    const inp=document.createElement('input');inp.type='text';inp.autocomplete='off';inp.value=value==null?'':String(value);inp.placeholder=placeholder||'';
+    row.append(lab,inp);box.appendChild(row);stop(inp);
+    let timer=null;
+    inp.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{const r=current();if(!r)return;r[key]=String(inp.value||'').trim();saveQuiet();},250);});
+    return inp;
+  }
+
   function mount(){
     const sheet=document.getElementById('sheet'),x=current();
     if(!isDetail(sheet)||!x){
@@ -76,7 +86,7 @@
     sheet.classList.add('pmV93StableDetail');
     const key=active.k+':'+String(active.id);
     let box=sheet.querySelector('.pmV93StableFields');
-    if(box&&box.dataset.key===key)return; // Never rebuild/reparent while typing.
+    if(box&&box.dataset.key===key)return;
     box?.remove();
 
     box=document.createElement('div');
@@ -93,23 +103,10 @@
       box.appendChild(flags);
     }
 
-    const tagsRow=document.createElement('label');tagsRow.className='pmV93Field';
-    const tagsLabel=document.createElement('span');tagsLabel.textContent='Tags';
-    const tags=document.createElement('input');tags.type='text';tags.autocomplete='off';tags.value=String(x.tags||'');tags.placeholder='Add tags';
-    tagsRow.append(tagsLabel,tags);box.appendChild(tagsRow);
+    addField(box,'Tags',x.tags,'Add tags','tags');
+    addField(box,'Religious level',x.religiousLevel,'e.g. strong, moderate, light','religiousLevel');
+    addField(box,'Religious details',x.religiousDetails,'e.g. Chabad, Breslev, Yeshivish, tzniut, long skirt','religiousDetails');
 
-    const relRow=document.createElement('label');relRow.className='pmV93Field';
-    const relLabel=document.createElement('span');relLabel.textContent='Religious level';
-    const rel=document.createElement('input');rel.type='text';rel.autocomplete='off';rel.value=x.religiousLevel==null?'':String(x.religiousLevel);rel.placeholder='e.g. 7, Chabad, Yeshivish';
-    relRow.append(relLabel,rel);box.appendChild(relRow);
-
-    stop(tags);stop(rel);
-    let tagTimer=null,relTimer=null;
-    tags.addEventListener('input',()=>{clearTimeout(tagTimer);tagTimer=setTimeout(()=>{const r=current();if(!r)return;r.tags=String(tags.value||'').trim();saveQuiet();},250);});
-    rel.addEventListener('input',()=>{clearTimeout(relTimer);relTimer=setTimeout(()=>{const r=current();if(!r)return;r.religiousLevel=String(rel.value||'').trim();saveQuiet();},250);});
-
-    /* Mount once as a direct child of the sheet. Older scripts do not know this class,
-       so they cannot move it and steal focus. Prefer immediately after quick details. */
     const quick=sheet.querySelector('.pmInlineTools');
     if(quick)quick.insertAdjacentElement('afterend',box);
     else{
