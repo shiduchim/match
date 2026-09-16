@@ -55,20 +55,21 @@ Use an existing image/screenshot attachment and, if needed, add a new test image
 - Share/save fallback still works if present.
 - Detail layout remains Profile -> Attachment -> Contacts after opening/closing image.
 
-## Attachment — PDF (v112 fix, pending device verification)
+## Attachment — PDF (v113 fix, pending device verification)
 
-v111 tried an in-app PDF.js renderer; it still failed on the user's Android PWA. v112 removes in-app PDF rendering entirely and hands the PDF to the OS instead. Use a known-good PDF that PeerMatch can parse/store.
+v111 tried an in-app PDF.js renderer; v112 tried share-then-download. Neither actually ran for Guy/Girl attachments — a separate, unrelated file (`whatsapp-import-v61.js`) was creating its own competing attachment box that always won and silently made both fixes dead code. v113 removes that competing box AND switches the PDF action to a guaranteed synchronous download (no share attempt). Use a known-good PDF that PeerMatch can parse/store.
 
 - PDF is still attached after save and app restart.
-- Tap Open PDF.
+- Tap Open PDF on a **Guy or Girl** profile (this is specifically the path that was broken — the v61 competing box only affected `openP`, not Shadchan detail).
 - It must NOT navigate to `blob://localhost/...` and must NOT open an unavailable Chrome tab.
-- It must NOT attempt to render inside PeerMatch at all (no in-app PDF viewer for PDFs anymore).
-- The Android share sheet should appear, offering installed apps that can handle a PDF (a PDF viewer, Drive, Gmail, etc.). Pick one and confirm the actual PDF opens correctly in it.
-- If share is unavailable/declined on this device, confirm a real named download lands in Android Downloads and opens correctly from there.
-- The stored attachment is unaffected either way — reopen the same record and confirm Open PDF still works.
-- Confirm image attachments are unaffected: Open attachment for an image still opens the in-app image viewer exactly as before, including its own Share/save button.
+- It must NOT attempt to render inside PeerMatch and must NOT show an Android share sheet — it should download immediately.
+- Confirm an alert appears saying the PDF was downloaded and where to find it.
+- Open Android's Downloads (or the browser's downloads/notifications) and confirm the file is there with a sensible name, and that it opens correctly in a PDF viewer from there.
+- The stored attachment is unaffected — reopen the same record and confirm Open PDF still works, repeatedly.
+- Tap Open PDF on a **Shadchan** with a PDF attachment too (this path was not affected by the v61 bug, but confirm the same reliable-download behavior applies there as well, and that the compact header-tile placement/label is unchanged).
+- Confirm image attachments are unaffected: Open attachment for an image still opens the in-app image viewer exactly as before, including its own Share/save button (which still offers Share first, then download).
 
-Test on the installed Android PWA — this is specifically about Android's share/download behavior, so desktop Chrome is not representative.
+Test on the installed Android PWA — this is specifically about Android's download behavior, so desktop Chrome is not representative.
 
 ## Add/Edit attachment form
 
@@ -121,27 +122,29 @@ This is critical for the WhatsApp selected-recipient workflow.
 - Search/filtering should not silently remap a selected checkbox to a different record.
 - Referral/grouped/collapsed Shadchan cards must map selection to the correct actual Shadchan record.
 
-## Selected profile -> selected Shadchan -> WhatsApp (critical current bug)
+## Selected profile -> selected Shadchan -> WhatsApp (v113 fix, pending device verification)
 
-Test with one known profile and one known Shadchan with a valid WhatsApp number.
+v113 removed two independent DOM-position-based selection reconstructions: `final-fixes-v107.js` now reads `window.pmGetSelected(k)` (the real Set from `peermatch-v11.js`) as the authoritative selection source, and `profile-share-v52.js` had its competing selected-profile WhatsApp path removed entirely — it no longer reads WhatsApp selection at all. Test with one known profile and one known Shadchan with a valid WhatsApp number.
 
 - Select profile.
 - Select exactly one Shadchan.
 - Press WhatsApp from selected-profile toolbar.
-- App must NOT ask to choose/re-enter the recipient if exactly one Shadchan is selected.
-- WhatsApp opens the selected Shadchan's chat/number.
+- WhatsApp opens the selected Shadchan's chat/number directly — no recipient picker dialog anymore (that fallback dialog was removed along with the fragile reconstruction it belonged to).
 - Profile text is prefilled.
 - The phone is normalized correctly for WhatsApp.
-- Before handoff, profile history receives one send/open entry.
-- Shadchan history receives the corresponding one entry.
-- No duplicate history entries are created by competing handlers.
+- Before handoff, profile history receives exactly one send/open entry.
+- Shadchan history receives exactly one corresponding entry.
+- No duplicate history entries are created.
 - Returning to PeerMatch does not corrupt selection state.
 
-Also test:
-- no Shadchan selected,
-- more than one Shadchan selected,
-- selected Shadchan has no phone,
-so error/choice behavior is intentional rather than accidental.
+Also test, and confirm a clear `alert()` appears rather than nothing happening or the wrong Shadchan being used:
+- no Shadchan selected — expect "Select exactly one Shadchan..." alert,
+- more than one Shadchan selected — expect "Select only one Shadchan..." alert,
+- selected Shadchan has no phone — expect the existing "needs a phone number" alert.
+
+Specifically retest with a **referred/grouped Shadchan** selected while collapsed (see "Referral/grouped Shadchan list" below) — this was the concrete mechanism identified for why the old DOM-position approach could pick the wrong Shadchan or miscount.
+
+Confirm SMS-for-selected-profiles still works unchanged (untouched by this fix, but it shares `profile-share-v52.js` with the removed code — verify no regression).
 
 ## Incoming Android Share -> PeerMatch
 
@@ -169,6 +172,7 @@ so error/choice behavior is intentional rather than accidental.
 - Checkbox on a child selects that child, not its parent or a data-index neighbor.
 - Search results keep record identity correct.
 - WhatsApp selected-recipient flow still chooses the exact checked record.
+- Check a Shadchan, then collapse the group it belongs to (hiding its card): confirm the WhatsApp selected-send flow still targets that same Shadchan correctly (this is the specific stale-checked-but-hidden scenario `docs/KNOWN_ISSUES.md` issue #2 identifies as the likely concrete trigger for the old bug).
 
 ## History
 

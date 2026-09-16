@@ -79,7 +79,9 @@ Do not pretend those two behaviors can be combined reliably by a browser URL.
 
 The original checkbox selection was introduced in `peermatch-v11.js` and lives in closure-owned Sets. Later attempts to infer selected records from DOM checkboxes/card positions are fragile because Shadchan grouping/reordering changes DOM order.
 
-Preferred direction: one persistent selection owner/API, not parallel selection systems.
+Decision (v113, implemented): `peermatch-v11.js` exposes `window.pmGetSelected(k)` as the one persistent selection API — a thin accessor over the Set it already owned, not a new/second selection system. `final-fixes-v107.js`'s independent DOM-position reconstruction for the WhatsApp-selected-send flow was deleted and switched to this API. `profile-share-v52.js`'s competing selected-profile WhatsApp path (its own separate DOM-position reconstruction) was deleted entirely rather than switched — it no longer reads WhatsApp selection at all. See `docs/KNOWN_ISSUES.md` issue #2 and `docs/ARCHITECTURE.md`'s "Core selection behavior" for the trace and what changed.
+
+Any future feature needing "what's selected" should call `window.pmGetSelected(k)`, never re-derive it.
 
 ## PDF / screenshot import
 
@@ -103,7 +105,11 @@ Decision (v112, current): stop trying to render PDFs in-app at all. A PWA holdin
 
 There is no more reliable option short of uploading to a real server and opening an `https://` URL, which conflicts with the free/local-only/privacy constraints and was not requested. `pdfLib()`/PDF.js stays in `profile-pdf-ocr-v63.js` for text extraction only — it is no longer used to open/render a PDF.
 
-Do not reintroduce in-app PDF rendering without a specific reason to revisit this: it has now failed twice on the user's actual device. See `docs/KNOWN_ISSUES.md` issue #1 for what was removed and what still needs device testing.
+**v112's share-then-download was never actually reached: a separate, previously-untraced bug (a 4th file, `whatsapp-import-v61.js`, building its own competing `.pmAttachmentBox` and winning a `setTimeout(0)` vs `setTimeout(30)` race) made `profile-pdf-ocr-v63.js`'s whole `detailAttachment()`/`openPmAttachment()` path dead code for Guy/Girl attachments through v111 and v112.** See `docs/KNOWN_ISSUES.md` issue #1 for the full trace.
+
+Decision (v113, current): now that the dead-code bug is fixed and the code actually runs, also drop the `navigator.share()` attempt for PDFs and go straight to the synchronous download (option 2 above), because awaiting `navigator.share()`'s native dialog can consume the tap's user-activation before the code falls through to the download, silently breaking the fallback on some Android/Chrome builds. The user confirmed they don't need the "let Android offer an app chooser" behavior — just reliable file access — so removing that risk entirely was preferred over trying to detect/work around the activation-loss case. `shareOrDownloadAttachment()` (share-then-download) is kept only for the image viewer's own Share/save button, a fresh standalone tap where this risk doesn't compound with anything upstream.
+
+Do not reintroduce in-app PDF rendering, and do not reintroduce an automatic `navigator.share()` attempt ahead of the PDF download, without a specific reason to revisit this — the in-app renderer failed twice on the user's actual device, and the share-then-download pattern was never even verified to run due to the unrelated v61 bug, so treat its "reliability" as unproven, not proven-then-abandoned.
 
 ## Attachment placement
 

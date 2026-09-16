@@ -4,8 +4,10 @@
    - Existing typed fields are never overwritten by extracted text.
    - Attachments are kept even when text extraction/OCR fails.
    - This file also owns opening saved attachments (openPmAttachment): images render
-     directly, PDFs render in-app via the same PDF.js loader used for parsing. No
-     other live file may bind a click handler to a saved-attachment button.
+     in-app; PDFs (and anything else) download directly and reliably via the OS,
+     since both an in-app PDF.js viewer and a share-then-download handoff were tried
+     and failed on-device (see docs/DECISIONS.md). No other live file may bind a
+     click handler to a saved-attachment button.
 */
 (function(){
   document.documentElement.dataset.peerMatchVersion='63';
@@ -189,9 +191,8 @@
   let viewerImageUrl=null;
   function closeAttachmentViewer(){document.getElementById('pmAttachmentViewer')?.remove();if(viewerImageUrl){URL.revokeObjectURL(viewerImageUrl);viewerImageUrl=null;}}
 
-  /* Hand the attachment to the OS: Web Share (with the real file, so Android offers
-     PDF-capable apps) first, a named download as fallback. Never window.open a blob:
-     URL or navigate the tab to one — that is the behavior that fails on-device. */
+  /* Share is still offered from the image viewer's own Share/save button (a fresh,
+     standalone tap — no prior await in that same gesture, so no activation risk). */
   async function shareOrDownloadAttachment(x,blob,type){
     const name=x.profileAttachmentName||'profile-attachment';
     let f=null;try{f=new File([blob],name,{type});}catch(_){ }
@@ -204,15 +205,31 @@
     }catch(e){console.warn('PeerMatch attachment handoff',e);alert('Could not open or download this attachment on this device.');}
   }
 
+  /* Guaranteed, synchronous named download — the reliable path for PDFs (and any other
+     non-image attachment). Deliberately does NOT try navigator.share() first: awaiting
+     share's native OS dialog can consume the tap's user-activation before this download
+     runs, silently breaking the fallback on some Android/Chrome builds. A plain <a
+     download> click has no such gap. Never window.open a blob: URL or navigate the tab
+     to one — that is the behavior that fails on-device. */
+  function downloadAttachment(x,blob){
+    const name=x.profileAttachmentName||'profile-attachment';
+    try{
+      const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);
+      alert('PDF downloaded — open it from your Android Downloads (or your browser’s downloads/notifications) to view it.');
+    }catch(e){console.warn('PeerMatch attachment download',e);alert('Could not download this attachment on this device.');}
+  }
+
   async function openPmAttachment(x){
     const blob=blobOf(x);if(!blob)return alert('This attachment is no longer available.');
     closeAttachmentViewer();
     const type=typeOf(x);
     if(!type.startsWith('image/')){
-      /* PDFs (and any other non-image attachment): no in-app renderer. An in-app PDF.js
-         viewer previously failed on the user's Android/PWA setup. PDF.js remains in this
-         file only for text extraction when a PDF is attached, not for opening one. */
-      await shareOrDownloadAttachment(x,blob,type);
+      /* PDFs (and any other non-image attachment): download directly and reliably
+         instead of trying to render or auto-share. An in-app PDF.js viewer (v111) and
+         a share-then-download handoff (v112) were both tried and still failed on the
+         user's Android/PWA setup; PDF.js remains in this file only for text extraction
+         when a PDF is attached, not for opening one. */
+      downloadAttachment(x,blob);
       return;
     }
     const d=document.createElement('div');d.id='pmAttachmentViewer';d.style.cssText='position:fixed;inset:0;z-index:60000;background:#eef1f3;display:flex;flex-direction:column';
@@ -226,7 +243,7 @@
   }
 
   function detailAttachment(x,isShad){
-    const sheet=document.getElementById('sheet');if(!sheet||!x?.profileAttachment)return;if(sheet.querySelector('.pmAttachmentBox,.pmV63Attachment'))return;
+    const sheet=document.getElementById('sheet');if(!sheet||!x?.profileAttachment)return;if(sheet.querySelector('.pmV63Attachment'))return;
     const label=typeOf(x)==='application/pdf'?'Open PDF':'Open attachment';
     const d=document.createElement('div');d.className='pmV63Attachment';d.innerHTML=`<div class="small">Profile attachment</div><div>${safe(x.profileAttachmentName||'Attached profile')}</div><button type="button" class="secondary">${safe(label)}</button>`;
     d.querySelector('button').onclick=e=>{e.preventDefault();openPmAttachment(x);};

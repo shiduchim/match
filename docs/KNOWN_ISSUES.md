@@ -1,14 +1,20 @@
 # PeerMatch Known Issues
 
-Status captured at app version **v112**.
+Status captured at app version **v113**.
 
 This file describes issues the user has actually reported or that are strongly evidenced by current live code. Do not mark an issue fixed based only on code inspection; the installed Android PWA must be tested.
 
 ## 1. PDF attachment does not open
 
-### Status: v111's in-app PDF.js viewer still failed on-device; v112 hands PDFs off to the OS instead, not yet device-tested
+### Status: real root cause found and fixed at v113 (dead code from a 4th competing file); download is now guaranteed-reliable; not yet device-tested
 
-Do not mark this resolved from code reading alone — confirm on the installed Android PWA per `docs/TESTING.md`. This section describes the state **before** the v111 fix, then v111, then what changed at v112.
+Do not mark this resolved from code reading alone — confirm on the installed Android PWA per `docs/TESTING.md`. This section describes the state **before** the v111 fix, then v111, then v112, then the v113 root-cause fix.
+
+### The actual root cause (found at v113, explains why v111 and v112 had no effect)
+
+Neither the v111 nor the v112 fix ever ran for Guy/Girl attachments. A **4th** file nobody had traced yet — `whatsapp-import-v61.js` (live, loaded before `profile-pdf-ocr-v63.js`) — wrapped `openP` to build its own competing `.pmAttachmentBox` via `attachmentDetail(k,id)`, scheduled with `setTimeout(...,0)`. `profile-pdf-ocr-v63.js`'s wrapper schedules its own box (`.pmV63Attachment`) with `setTimeout(...,30)`, and guards against a duplicate by checking for `.pmAttachmentBox` OR `.pmV63Attachment` first. Since `0ms` always fires before `30ms`, `whatsapp-import-v61.js`'s box was created *first*, every time, and `profile-pdf-ocr-v63.js`'s guard then always saw `.pmAttachmentBox` already present and returned immediately — so `detailAttachment()`/`openPmAttachment()` (all of v111's and v112's work) never executed at all. The button the user was actually tapping the whole time was `whatsapp-import-v61.js`'s own, with its own hard-coded `onclick = () => window.open(URL.createObjectURL(x.profileAttachment), '_blank', 'noopener')` — the exact broken pattern every prior fix attempt thought it had eliminated. (This only affected Guy/Girl: `whatsapp-import-v61.js` does not wrap `openS`/Shadchan the same way.) Its default insertion point (`beforebegin` `#v19EditProfile`) happened to land close to the v110-correct position because, at the `0ms` mark, `edit-buttons-v77.js` had not yet relocated `#v19EditProfile` into the header — which is why the v110 layout fix still looked correct on-device despite this being a completely different, never-before-traced box.
+
+Fixed at v113: `attachmentDetail()` and the `openP` wrap that called it were deleted from `whatsapp-import-v61.js` (its unrelated ZIP-import and referral-by features are untouched). `profile-pdf-ocr-v63.js`'s guard was simplified to check only `.pmV63Attachment`.
 
 ### User-visible behavior (prior to the v111 fix)
 
@@ -57,13 +63,25 @@ The user reported the v111 in-app PDF.js viewer **still fails** on their install
 
 Images are unaffected: `openPmAttachment` still opens them in the same in-app full-screen viewer as before (its own Share/Save button now calls the same `shareOrDownloadAttachment` helper instead of duplicating that logic inline).
 
-The `.pmV63Attachment button` click still routes through `detailAttachment()` → `openPmAttachment()` exclusively — no other live file binds a handler to it; ownership is unchanged from v111.
+### What changed at v113 (reliability fix, on top of the root-cause fix above)
+
+Even with the dead-code bug fixed, v112's "try `navigator.share()`, fall back to download" pattern for PDFs carried a latent risk: `await navigator.share(...)`'s native OS dialog can consume the tap's user-activation before the code falls through to the `<a download>` click that follows it in the same function — some Android/Chrome builds will then silently drop that download since it's no longer considered user-initiated. The user confirmed they no longer need the "let Android offer an app chooser" behavior and just want reliable access to the file, so PDFs (and any other non-image attachment) now skip `navigator.share()` entirely and go straight to a synchronous, guaranteed `<a download>` click — no `await` before it, so no activation gap — followed by an explicit `alert()`: "PDF downloaded — open it from your Android Downloads…". `shareOrDownloadAttachment()` (share-then-download) is kept only for the image viewer's own Share/save button, which is a fresh standalone tap with no risk of this pattern.
+
+The `.pmV63Attachment button` click still routes through `detailAttachment()` → `openPmAttachment()` exclusively — confirmed no other live file binds a handler to it (see debugging note below).
 
 ### Debugging note (for any future attachment work)
 
-Before adding any new attachment-related code, search every LIVE script (cross-reference `sw.js`'s `SCRIPTS` array) for `.pmV63Attachment`, `profileAttachment`, `URL.createObjectURL`, and `window.open` to confirm `profile-pdf-ocr-v63.js` is still the only one binding a click handler to the saved-attachment button.
+Before adding any new attachment-related code, search every LIVE script (cross-reference `sw.js`'s `SCRIPTS` array) for `.pmV63Attachment`, `.pmAttachmentBox` (the class the v61 competitor used — confirm nothing recreates it), `profileAttachment`, `URL.createObjectURL`, and `window.open` to confirm `profile-pdf-ocr-v63.js` is still the only one binding a click handler to the saved-attachment button. This bug survived two prior fix attempts (v111, v112) specifically because that search wasn't done broadly enough the first time — `.pmAttachmentBox` is a different class name from `.pmV63Attachment` and is easy to miss.
 
-## 2. Selected profile -> selected Shadchan -> WhatsApp is still not fixed
+## 2. Selected profile -> selected Shadchan -> WhatsApp
+
+### Status: fixed at v113 by exposing the real selection Sets; not yet device-tested
+
+Do not mark this resolved from code reading alone — confirm on the installed Android PWA per `docs/TESTING.md`.
+
+**Correction:** earlier notes (and a prior status report) named `workflow-v103.js` as one of the two competing DOM-reconstruction files. That was a misattribution — `workflow-v103.js` is unrelated (paste-profile/call-reminders code, no WhatsApp-selection logic at all). The actual second file was **`profile-share-v52.js`**, whose file-level comment happened to say "v103," which is what caused the mix-up.
+
+**Explicitly audited and confirmed at v113** (not just inferred from the misattribution above): `workflow-v103.js` has no `document.addEventListener('click', ...)` at all, no `#pmWhatsApp-` reference, no `visible()`/`checked()`/`tracked` selection-reconstruction helper, and no `.pmListCheck`/`list.children` card-position mapping. Its only capture-phase listeners are on `input`/`paste` events (for phone/name auto-cleanup as the user types), and every `.onclick` in the file targets an element it creates itself (its own Paste button, call-reminder buttons, the calls badge/dialog) — none of it touches selection or WhatsApp. It was never a second owner of this flow and required no changes. If this bug resurfaces, do not re-suspect `workflow-v103.js` without new evidence — this file has been cleared.
 
 ### Required behavior
 
@@ -74,30 +92,22 @@ Before adding any new attachment-related code, search every LIVE script (cross-r
 5. WhatsApp should open directly to the selected Shadchan's number with selected profile text prefilled.
 6. Record the action in both histories before handoff.
 
-### Current conflict
+### Root cause (traced before fixing)
 
-`peermatch-v11.js` owns the original selected Sets inside a closure. Later scripts cannot directly read them.
+`peermatch-v11.js` owns the real selection state in a closure-private `selected={guys:new Set(),girls:new Set(),shadchanim:new Set()}`, updated by record ID whenever a checkbox is toggled — this is always correct regardless of how the list is displayed. Nothing exposed it, so two other live files each independently **reconstructed** "what's checked" from DOM card position instead of reading it, and both owned a capture-phase click listener on the same `button[id^="pmWhatsApp-"]`:
+- `final-fixes-v107.js`'s `checked(k)`/`stampCards(k)` stamped `data-pmRecordId` onto `[...list.children]` by index against a freshly-filtered `visible(k)` array, then read back checked boxes by that stamp.
+- `profile-share-v52.js`'s `selectedShadchan()`/`itemForCheckbox()` did the same index-against-`visible(k)` mapping independently, with no fallback to the real Sets at all for the Shadchan side.
 
-`profile-share-v52.js` has its own WhatsApp capture handler and selected-Shadchan logic. It can call `stopImmediatePropagation()`.
+Both assume the *n*-th `.card` in the DOM corresponds to the *n*-th item in a freshly-recomputed `visible(k)`. That assumption is unsafe in this codebase on principle — the Shadchan list has grouping/collapsing (`profile-tools-v62.js`'s `groupShadchanim()`, which hides referred-under cards via a `.pmRefCollapsed` class without un-checking them) and multiple other scripts touching the same list — so a **checked-but-now-collapsed/hidden** Shadchan card can still be counted, while a freshly-checked visible one is missed, producing exactly the "doesn't reliably open the right chat" symptom. Since `final-fixes-v107.js` loads first and always got first refusal on the click (via `stopImmediatePropagation()` when its own miscount happened to read as "exactly 1"), `profile-share-v52.js`'s parallel reconstruction (with its own `chooseWhatsAppRecipient()` manual-entry dialog as a fallback) would only ever run when v107's independent miscount didn't land on exactly 1 — two unsynchronized fragile paths, not one.
 
-`final-fixes-v107.js` also registers a capture-phase click handler and attempts to determine selected records by inspecting checked DOM boxes and stamping cards with record IDs.
+### What changed at v113
 
-That DOM mapping is fragile because Shadchan grouping/referral scripts reorder, indent, hide, and decorate cards. The visible card order may not safely equal raw `data.shadchanim` order.
+- `peermatch-v11.js`: exposes `window.pmGetSelected(k)`, returning the real Set-backed selection (`selectedItems(k)` — a function that already existed internally, now just readable from outside). No second selection system was created.
+- `final-fixes-v107.js`: `directWhatsApp(k)` now reads `window.pmGetSelected(k)` and `window.pmGetSelected('shadchanim')` directly instead of `checked()`. Alerts clearly when 0 or 2+ Shadchanim are selected instead of silently doing nothing or falling through to a different handler. `checked()`/`stampCards()`/`visible()` (the DOM-reconstruction code) and the `data-pmRecordId` stamping are deleted — confirmed nothing else in the codebase read that attribute. The click listener now unconditionally owns `#pmWhatsApp-guys`/`#pmWhatsApp-girls` (it's the sole handler now, so it no longer needs to "peek" at counts before deciding whether to yield to a fallback).
+- `profile-share-v52.js`: `sendWhatsApp()`, `selectedShadchan()`, `chooseWhatsAppRecipient()`, `shareOneWhatsApp()`, `closeWaQueue()`/`renderWaQueue()`, and the WhatsApp branch of its click listener are deleted entirely. Its SMS path (`sendSms`, `shareOneSms`, the SMS queue dialog, `selectedItems`/`tracked` checkbox-tracking) and its `polishBar()` (which still *creates* both the WhatsApp and SMS buttons — v107 needs that button to exist) are untouched.
+- The actual `wa.me` navigation, phone normalization (`pmWhatsAppDigits` first, with a fallback), profile-text message body, and the paired one-entry-per-side history write (`saveShare`) are unchanged — this was a selection-reading fix only, reusing the already-proven send path.
 
-The previous attempt to solve this by loading `final-fixes-v107.js` before `profile-share-v52.js` did not solve the user's actual workflow.
-
-### Preferred fix direction
-
-Do not add another click interceptor.
-
-Instead:
-- establish one shared/persistent selection owner,
-- expose selected record IDs from the core selection layer or refactor the core owner so later toolbar actions use the real Sets,
-- make the selected-profile WhatsApp action use that API,
-- remove/disable competing selected-recipient handlers,
-- keep history logging single-owner to avoid duplicate entries.
-
-### Platform limitation
+### Platform limitation (unchanged)
 
 Direct `wa.me` can preselect recipient + text but not attach a local PDF/photo. Native sharing can attach a file but cannot reliably preselect the exact WhatsApp chat. Do not treat that as an app bug.
 

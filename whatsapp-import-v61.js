@@ -22,8 +22,6 @@
     .pmWaThumb{display:block;max-width:100%;max-height:160px;object-fit:contain;margin:7px auto;border-radius:10px;border:1px solid var(--line)}
     .pmWaBar{position:sticky;bottom:-18px;display:grid;grid-template-columns:1.4fr .8fr;gap:7px;background:rgba(246,245,242,.97);padding:10px 0 2px;z-index:3}
     .pmWaBadge{display:inline-block;border-radius:999px;background:#eaf1f6;padding:2px 7px;font-size:10px;font-weight:800;color:#315b78;margin-left:5px}
-    .pmAttachmentBox{margin:9px 0;padding:9px;background:#fff;border:1px solid var(--line);border-radius:12px}
-    .pmAttachmentBox button{width:100%;margin-top:6px}
     @media(max-width:430px){.pmWaGrid{grid-template-columns:1fr}.pmWaBar{grid-template-columns:1fr 1fr}}
   `;
   document.head.appendChild(css);
@@ -382,20 +380,16 @@
     (sheet.querySelector('.v19ShadHead')||sheet.querySelector('h2'))?.insertAdjacentElement('afterend',d);
   }
 
-  function attachmentDetail(k,id){
-    const x=(data[k]||[]).find(z=>String(z.id)===String(id)),sheet=document.getElementById('sheet');
-    if(!x||!sheet||!x.profileAttachment||sheet.querySelector('.pmAttachmentBox'))return;
-    const box=document.createElement('div');box.className='pmAttachmentBox';
-    box.innerHTML=`<div class="small">Profile attachment</div><div>${safe(x.profileAttachmentName||'Attached profile')}</div><button type="button" class="secondary">Open attachment</button>`;
-    const anchor=sheet.querySelector('#v19EditProfile')||sheet.querySelector('#pe')||sheet.querySelector('.sectionTitle');
-    anchor?.insertAdjacentElement('beforebegin',box);
-    box.querySelector('button').onclick=()=>{const u=URL.createObjectURL(x.profileAttachment);window.open(u,'_blank','noopener');setTimeout(()=>{try{URL.revokeObjectURL(u)}catch(_){}},60000);};
-  }
-
+  /* attachmentDetail()/the openP wrap that called it were removed: this file's own
+     .pmAttachmentBox (created via a setTimeout(...,0) after openP, i.e. before
+     profile-pdf-ocr-v63.js's own setTimeout(...,30)) always won the race against
+     profile-pdf-ocr-v63.js's .pmV63Attachment and its guard against a duplicate box —
+     meaning the correct attachment-opening handler in profile-pdf-ocr-v63.js never
+     even ran for Guy/Girl attachments, and this file's own hard-coded
+     window.open(blobUrl,'_blank') (the exact broken pattern) ran instead every time.
+     Attachment opening is now exclusively owned by profile-pdf-ocr-v63.js. */
   const oldOpenS=window.openS;
   if(typeof oldOpenS==='function')window.openS=openS=function(id){activeShadId=id;const r=oldOpenS(id);setTimeout(()=>referralDetail(id),0);return r;};
-  const oldOpenP=window.openP;
-  if(typeof oldOpenP==='function')window.openP=openP=function(k,id){const r=oldOpenP(k,id);setTimeout(()=>attachmentDetail(k,id),0);return r;};
 
   async function sharedZip(){
     try{

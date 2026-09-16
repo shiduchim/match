@@ -97,6 +97,12 @@
   function selectedItems(k){return (data[k]||[]).filter(x=>selected[k].has(x.id));}
   function selectionText(k){return selectedItems(k).map(x=>recordText(k,x)).join('\n\n--------------------\n\n');}
 
+  /* Authoritative selection accessor: the only source of truth for "what is checked"
+     for guys/girls/shadchanim. Other files must read this instead of reconstructing
+     selection from DOM card position, which breaks whenever the list is reordered,
+     grouped/collapsed, or re-filtered. */
+  window.pmGetSelected=function(k){return selectedItems(k);};
+
   function ensureSelectionBar(k){
     const section=document.getElementById(k+'Section'),toolbar=section?.querySelector('.toolbar');if(!section||!toolbar)return;
     let bar=document.getElementById('pmSelected-'+k);
