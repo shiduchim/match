@@ -106,8 +106,14 @@
       box.appendChild(row);
     }
 
+    /* Contacts is the single source of truth for its own placement — directly after Attachment
+       (or after the profile text/audio when there is no attachment), never above the profile.
+       Do not add a second script that repositions this element after the fact. */
     const profileCard=[...sheet.querySelectorAll('.card')].find(c=>c.querySelector('.profileText'));
-    if(profileCard)profileCard.insertAdjacentElement('beforebegin',box);else sheet.querySelector('.v19Head')?.insertAdjacentElement('afterend',box);
+    const attachment=sheet.querySelector('.pmV63Attachment:not(.pmV67ShadAttachment)');
+    const audioCard=sheet.querySelector('.v19ProfileAudio');
+    const anchor=attachment||audioCard||profileCard;
+    if(anchor)anchor.insertAdjacentElement('afterend',box);else sheet.querySelector('.v19Head')?.insertAdjacentElement('afterend',box);
   }
 
   function formKind(){const h=String(document.querySelector('#sheet h2')?.textContent||'');return /Guy/i.test(h)?'guys':/Girl/i.test(h)?'girls':'';}

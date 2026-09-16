@@ -1,6 +1,9 @@
-/* PeerMatch v107: profile text first, then attachment and contacts; Edit stays in top-right header. */
+/* PeerMatch v110: compact styling for the Guy/Girl saved attachment box.
+   Placement of Attachment and Contacts is now owned at creation time by
+   profile-pdf-ocr-v63.js and profile-contacts-v96.js respectively — this file
+   no longer repositions either element and only applies cosmetic classes. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='107';
+  document.documentElement.dataset.peerMatchVersion='110';
 
   const style=document.createElement('style');
   style.textContent=`
@@ -28,32 +31,16 @@
   `;
   document.head.appendChild(style);
 
-  function profileDetail(){
+  function decorateAttachment(){
     const sheet=document.getElementById('sheet');
     if(!sheet||!sheet.querySelector('.v19Head')||sheet.querySelector('.v19ShadHead')||document.getElementById('v19Profile'))return;
 
-    const profileText=sheet.querySelector('.card > .profileText');
-    const profileCard=profileText?.closest('.card');
-    if(!profileCard)return;
-
     const attachment=sheet.querySelector('.pmV63Attachment:not(.pmV67ShadAttachment)');
-    const contacts=sheet.querySelector('.pmV96Contacts');
-
-    let anchor=profileCard;
-    if(attachment){
-      attachment.classList.add('pmV85ProfileAttachment');
-      if(anchor.nextElementSibling!==attachment)anchor.insertAdjacentElement('afterend',attachment);
-      anchor=attachment;
-    }
-    if(contacts){
-      if(anchor.nextElementSibling!==contacts)anchor.insertAdjacentElement('afterend',contacts);
-    }
-
-    /* Do not move #v19EditProfile here. edit-buttons-v77.js owns it in the top-right header. */
+    if(attachment)attachment.classList.add('pmV85ProfileAttachment');
   }
 
   let queued=false;
-  function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;profileDetail();});}
+  function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;decorateAttachment();});}
   new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
   schedule();
 })();

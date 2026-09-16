@@ -1,6 +1,6 @@
 # PeerMatch Known Issues
 
-Status captured at app version **v109**.
+Status captured at app version **v110**.
 
 This file describes issues the user has actually reported or that are strongly evidenced by current live code. Do not mark an issue fixed based only on code inspection; the installed Android PWA must be tested.
 
@@ -21,7 +21,7 @@ Chrome then showed the page as unavailable.
 - The PDF is generally being stored and parsed; the failure is in viewing/opening, not necessarily file storage.
 - `profile-pdf-ocr-v63.js` is live and already loads PDF.js for PDF parsing/text extraction.
 - `final-fixes-v107.js` is live and includes an in-app PDF.js renderer, but user testing after the v108/v109 sequence still reported PDF opening as broken.
-- `ui-fixes-v73.js` contains an older `openBlob()` path and Shadchan attachment button logic that can open Blob URLs in a new window/tab.
+- `attachment-v66.js` (internally stamped `v67`) contains an older `openBlob()` path and Shadchan attachment button logic (`moveShadAttachment()`) that can open Blob URLs in a new window/tab. (Corrected: earlier revisions of this document misattributed this to `ui-fixes-v73.js`, which contains no attachment logic.)
 - `profile-pdf-ocr-v63.js` historically created saved-attachment detail buttons that opened an object URL in a new tab.
 - Historical `attachment-view-v104.js` and `pdf-open-fix-v106.js` remain in the repo but are NOT in the current `sw.js` `SCRIPTS` array and therefore should not be assumed live.
 
@@ -89,9 +89,17 @@ Direct `wa.me` can preselect recipient + text but not attach a local PDF/photo. 
 
 ## 3. Attachment block can move back toward the header/top-right
 
-### User-visible behavior
+### Status: source-level fix applied at v110, not yet device-tested
 
-After layout fixes, the saved attachment/Open attachment UI has reappeared in the top-right/header area instead of remaining below the profile text.
+`profile-pdf-ocr-v63.js`'s `detailAttachment()` used to default to inserting the Guy/Girl saved-attachment box `beforebegin` the first of `.sectionTitle` / `#v19EditProfile` (the Edit button) / `.v19Contact` — landing it near the header by default. `profile-under-layout-v85.js` then reactively relocated it after the fact on every DOM mutation, racing against that default.
+
+As of v110, `detailAttachment()` takes an `isShad` flag and, for Guy/Girl (`isShad` false), inserts directly after `.v19ProfileAudio` (or the profile-text card, or `.v19Head` as a last resort) at creation time. `profile-under-layout-v85.js` no longer repositions anything — it only adds a cosmetic class to the already-correctly-placed attachment box. The Shadchan-detail attachment path (`isShad` true) is unchanged.
+
+Do not mark this resolved from code reading alone — confirm on the installed Android PWA per `docs/TESTING.md`.
+
+### User-visible behavior (prior to the v110 fix)
+
+After layout fixes, the saved attachment/Open attachment UI reappeared in the top-right/header area instead of remaining below the profile text.
 
 ### Desired Guy/Girl detail order
 
@@ -105,25 +113,15 @@ After layout fixes, the saved attachment/Open attachment UI has reappeared in th
 
 ### Known sources of layout contention
 
-Several live scripts manipulate detail DOM repeatedly:
-- `ux-v65.js`
-- `ui-fixes-v73.js`
-- `profile-under-layout-v85.js`
-- `profile-contacts-v96.js`
-- `stable-details-v93.js`
-- `final-fixes-v107.js`
-- other detail/UI patches loaded around them
-
-Important distinction:
-- `ux-v65.js` has logic that moves the **form** attachment control (`#pmV63Attach`) into top tools.
-- `ui-fixes-v73.js` explicitly moves a saved **Shadchan detail** `.pmV63Attachment` into `.v19ShadHead`.
-- `profile-under-layout-v85.js` was changed to put Guy/Girl saved attachment after profile text and contacts after attachment.
+- `ux-v65.js` moves the **form** attachment control (`#pmV63Attach`) into top tools — unrelated to saved-detail placement, do not confuse the two.
+- `attachment-v66.js` (internally stamped `v67`) moves a saved **Shadchan detail** `.pmV63Attachment` into `.v19ShadHead` via `moveShadAttachment()`. (Earlier revisions of this document incorrectly attributed this to `ui-fixes-v73.js`, which contains no attachment logic — it's a translation/contact-heading file. `attachment-v66.js` is the correct file.)
+- `profile-contacts-v96.js` used to default to inserting Contacts `beforebegin` the profile card (above the profile text); as of v110 it inserts `afterend` the attachment (or profile text/audio if there's no attachment) at creation time, same pattern as the attachment fix above.
 
 Do not assume the same selector refers to the same UI context; distinguish Add/Edit form controls, Guy/Girl saved detail, and Shadchan saved detail.
 
-### Preferred fix direction
+### Preferred fix direction (applied at v110)
 
-Assign one owner per detail context and stop older MutationObservers from undoing the final order.
+Assign one creation-time owner per detail context instead of a second script repairing placement after the fact. Done for Guy/Girl attachment (`profile-pdf-ocr-v63.js`) and Contacts (`profile-contacts-v96.js`). Shadchan-detail attachment placement (`attachment-v66.js`) and the PDF-opening handler itself are unchanged — still open, see issue #1.
 
 ## 4. Contacts ordering has regressed in the past
 

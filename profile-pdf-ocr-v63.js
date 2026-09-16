@@ -175,18 +175,27 @@
     const copy=f;setTimeout(async()=>{setStatus('Reading screenshot…');try{const t=await ocrImage(copy,'Reading screenshot');if(t){applyExtracted(t,'profile');setStatus('Screenshot text found. Empty fields were filled; review before saving.');}else setStatus('No readable text found in the screenshot.');}catch(err){console.warn('PeerMatch screenshot OCR',err);setStatus('Could not read screenshot text. The screenshot can still be saved.');}},0);
   },true);
 
-  function detailAttachment(x){
+  function detailAttachment(x,isShad){
     const sheet=document.getElementById('sheet');if(!sheet||!x?.profileAttachment)return;if(sheet.querySelector('.pmAttachmentBox,.pmV63Attachment'))return;
     const d=document.createElement('div');d.className='pmV63Attachment';d.innerHTML=`<div class="small">Profile attachment</div><div>${safe(x.profileAttachmentName||'Attached profile')}</div><button type="button" class="secondary">Open attachment</button>`;
-    const anchor=sheet.querySelector('.sectionTitle')||sheet.querySelector('#v19EditProfile')||sheet.querySelector('.v19Contact');anchor?.insertAdjacentElement('beforebegin',d);
     d.querySelector('button').onclick=()=>{const u=URL.createObjectURL(x.profileAttachment);window.open(u,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(u),60000);};
+    if(isShad){
+      const anchor=sheet.querySelector('.sectionTitle')||sheet.querySelector('#v19EditProfile')||sheet.querySelector('.v19Contact');
+      anchor?.insertAdjacentElement('beforebegin',d);
+      return;
+    }
+    /* Guy/Girl detail: attachment is the single source of truth for its own placement — directly
+       after the profile text (or the audio profile, when present), never near the header/Edit
+       button. Do not add a second script that repositions this element after the fact. */
+    const anchor=sheet.querySelector('.v19ProfileAudio')||sheet.querySelector('.card > .profileText')?.closest('.card')||sheet.querySelector('.v19Head');
+    anchor?.insertAdjacentElement('afterend',d);
   }
   function shadDetail(id){
     const x=(data.shadchanim||[]).find(z=>String(z.id)===String(id)),sheet=document.getElementById('sheet');if(!x||!sheet)return;
     if(x.profileText&&!sheet.querySelector('.pmV63ProfileCard')){const d=document.createElement('div');d.className='pmV63ProfileCard';d.innerHTML=`<div class="small">Shadchan profile / notes</div>${safe(x.profileText)}`;(sheet.querySelector('.pmInlineTools')||sheet.querySelector('.v19Contact')||sheet.querySelector('.v19ShadHead'))?.insertAdjacentElement('afterend',d);}
-    detailAttachment(x);
+    detailAttachment(x,true);
   }
-  function profileDetail(k,id){const x=(data[k]||[]).find(z=>String(z.id)===String(id));if(x)detailAttachment(x);}
+  function profileDetail(k,id){const x=(data[k]||[]).find(z=>String(z.id)===String(id));if(x)detailAttachment(x,false);}
 
   const priorOpenP=window.openP;if(typeof priorOpenP==='function')window.openP=function(k,id){activeProfile={k,id};const r=priorOpenP(k,id);setTimeout(()=>profileDetail(k,id),30);return r;};
   const priorOpenS=window.openS;if(typeof priorOpenS==='function')window.openS=function(id){activeShad=id;const r=priorOpenS(id);setTimeout(()=>shadDetail(id),30);return r;};
