@@ -1,11 +1,15 @@
-/* PeerMatch v30: delete individual conversation/history entries. */
+/* PeerMatch v117: delete individual conversation/history entries permanently.
+   WhatsApp profile-share history can exist on both the profile and Shadchan sides.
+   Deleting only one side allowed dual-share-history-v100.js to recreate it on its next
+   reconciliation pass. Deletion now removes the whole linked share pair (by shareLinkId
+   or mirror ids) before saving, so deleted entries stay deleted. */
 (function(){
-  document.documentElement.dataset.peerMatchVersion='30';
+  document.documentElement.dataset.peerMatchVersion='117';
 
   const style=document.createElement('style');
   style.textContent=`
-    .pmEventTopRight{display:flex;align-items:center;gap:8px}
-    .pmDeleteEvent{border:0;background:transparent;color:#9b4a42;padding:0;font-size:11px;font-weight:700;line-height:1;cursor:pointer}
+    .pmEventTopRight{display:flex;align-items:center;gap:8px;white-space:nowrap;flex-shrink:0}
+    .pmDeleteEvent{border:0;background:transparent;color:#9b4a42;padding:0 1px;font-size:11px;font-weight:700;line-height:1;cursor:pointer;white-space:nowrap;flex:0 0 auto;min-width:42px}
     .pmDeleteEvent:hover{text-decoration:underline}
   `;
   document.head.appendChild(style);
@@ -43,6 +47,36 @@
     }).join('');
   };
 
+  function idKey(v){return v==null?'':String(v);}
+
+  /* Remove the selected activity and any mirrored/paired copy anywhere else in PeerMatch.
+     v116 direct shares give both sides the same shareLinkId. Older mirrored entries may
+     instead reference each other through mirroredFromProfileActivityId /
+     mirroredFromShadchanActivityId, so support both schemes. */
+  function removeLinkedEntries(target){
+    const link=String(target?.shareLinkId||'');
+    const ids=new Set([
+      idKey(target?.id),
+      idKey(target?.mirroredFromProfileActivityId),
+      idKey(target?.mirroredFromShadchanActivityId)
+    ].filter(Boolean));
+    let removed=0;
+
+    for(const k of ['shadchanim','guys','girls']){
+      for(const record of (data[k]||[])){
+        if(!Array.isArray(record.activities))continue;
+        for(let i=record.activities.length-1;i>=0;i--){
+          const a=record.activities[i];
+          const sameLink=!!link&&String(a?.shareLinkId||'')===link;
+          const sameId=ids.has(idKey(a?.id));
+          const mirrorsSelected=ids.has(idKey(a?.mirroredFromProfileActivityId))||ids.has(idKey(a?.mirroredFromShadchanActivityId));
+          if(sameLink||sameId||mirrorsSelected){record.activities.splice(i,1);removed++;}
+        }
+      }
+    }
+    return removed;
+  }
+
   async function deleteEntry(btn){
     const k=btn.dataset.k,id=btn.dataset.id,index=Number(btn.dataset.index);
     const arr=data[k]||[];
@@ -51,7 +85,8 @@
     const a=x.activities[index];
     const label=eventTitle(a);
     if(!confirm('Delete this history entry?\n\n'+label+'\n'+String(a.ts||'')))return;
-    x.activities.splice(index,1);
+
+    removeLinkedEntries(a);
     try{
       await save();
       try{render();}catch(e){}
