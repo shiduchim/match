@@ -24,10 +24,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Build first-load PeerMatch page
+      - name: Build current PeerMatch runtime
         shell: python
         run: |
           from pathlib import Path
+          import ast
+          import re
           import shutil
 
           root = Path('.')
@@ -36,59 +38,37 @@ jobs:
               shutil.rmtree(site)
           site.mkdir()
 
-          for item in root.iterdir():
-              if item.name in {'.git', '.github', '_site'}:
-                  continue
-              dest = site / item.name
-              if item.is_dir():
-                  shutil.copytree(item, dest)
-              else:
-                  shutil.copy2(item, dest)
+          sw_text = (root / 'sw.js').read_text(encoding='utf-8')
+          version_match = re.search(r"const VERSION='([^']+)'", sw_text)
+          scripts_match = re.search(r"const SCRIPTS=\[(.*?)\]\s*;", sw_text, re.S)
+          if not version_match or not scripts_match:
+              raise RuntimeError('Could not read VERSION/SCRIPTS from sw.js')
+
+          version = version_match.group(1)
+          scripts = ast.literal_eval('[' + scripts_match.group(1) + ']')
+          required = ['index.html', 'manifest.webmanifest', 'icon.svg', 'sw.js', *scripts]
+
+          missing = [name for name in required if not (root / name).is_file()]
+          if missing:
+              raise RuntimeError('Missing live runtime files: ' + ', '.join(missing))
+
+          for name in required:
+              shutil.copy2(root / name, site / name)
 
           index = site / 'index.html'
           html = index.read_text(encoding='utf-8')
-          scripts = [
-              'whatsapp-enhance.js',
-              'peermatch-v11.js',
-              'ui-v18.js',
-              'peermatch-v19.js',
-              'audio-v24.js',
-              'send-match-v27.js',
-              'make-match-v32.js',
-              'match-text-required-v33.js',
-              'match-photo-option-v34.js',
-              'make-match-v35-ui.js',
-              'backup-v28.js',
-              'history-delete-v30.js',
-              'history-composer-v36.js',
-              'sender-fields-v39.js',
-              'profile-contact-v40.js',
-              'profile-required-v44.js',
-              'feature-request-v46.js',
-              'profile-display-v48.js',
-              'email-photo-v51.js',
-              'profile-share-v52.js',
-              'shadchan-share-v55.js',
-              'selection-layout-v54.js',
-              'contact-actions-v56.js',
-              'make-match-v60-ui.js',
-              'whatsapp-import-v61.js',
-              'profile-tools-v62.js',
-              'profile-pdf-ocr-v63.js',
-              'phone-links-v64.js',
-              'ux-v65.js',
-              'ux-v65-fix.js',
-              'forms-v65.js',
-              'link-recovery-v65.js',
-              'translate-v65.js',
-              'make-match-v65-fix.js',
-              'waiting-v65.js',
-              'attachment-v66.js',
-          ]
-          tags = ''.join(f'<script src="./{name}?v=66"></script>' for name in scripts)
-          if 'attachment-v66.js?v=66' not in html:
-              html = html.replace('</body>', tags + '</body>')
+          tags = ''.join(f'<script src="./{name}?v={version}"></script>' for name in scripts)
+          for name in scripts:
+              html = re.sub(
+                  rf'<script\s+src=["\']\./{re.escape(name)}(?:\?[^"\']*)?["\']\s*>\s*</script>',
+                  '',
+                  html,
+                  flags=re.I,
+              )
+          html = html.replace('</body>', tags + '</body>')
           index.write_text(html, encoding='utf-8')
+
+          print(f'PeerMatch v{version}: deploying {len(required)} live web files')
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
