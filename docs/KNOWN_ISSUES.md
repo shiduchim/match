@@ -1,6 +1,6 @@
 # PeerMatch Known Issues
 
-Status captured at app version **v113**.
+Status captured at app version **v114**.
 
 This file describes issues the user has actually reported or that are strongly evidenced by current live code. Do not mark an issue fixed based only on code inspection; the installed Android PWA must be tested.
 
@@ -75,7 +75,7 @@ Before adding any new attachment-related code, search every LIVE script (cross-r
 
 ## 2. Selected profile -> selected Shadchan -> WhatsApp
 
-### Status: fixed at v113 by exposing the real selection Sets; not yet device-tested
+### Status: fixed at v113 (real selection Sets) and v114 (shared proven wa.me launch, direct button binding, two-case A/B routing preserved, multi-profile send queue); not yet device-tested
 
 Do not mark this resolved from code reading alone — confirm on the installed Android PWA per `docs/TESTING.md`.
 
@@ -85,12 +85,19 @@ Do not mark this resolved from code reading alone — confirm on the installed A
 
 ### Required behavior
 
-1. Check one Guy or Girl profile.
-2. Check one Shadchan.
+There are two intentional, distinct behaviors behind the same button, routed by whether a Shadchan is selected — see "What changed at v114" below for why this matters and was almost collapsed into one path by mistake.
+
+**Case A — profile(s) selected, no Shadchan selected:** keep the pre-existing general WhatsApp/share behavior (lets the user pick any recipient, an existing Shadchan or typed name/phone).
+
+**Case B — exactly one Shadchan selected, with one or more Guy/Girl profiles selected:**
+
+1. Check one or more Guy/Girl profiles.
+2. Check exactly one Shadchan.
 3. Switching between tabs must not clear either selection.
 4. Tap WhatsApp in the selected-profile toolbar.
-5. WhatsApp should open directly to the selected Shadchan's number with selected profile text prefilled.
-6. Record the action in both histories before handoff.
+5. WhatsApp should open directly to the selected Shadchan's number with the first selected profile's text prefilled.
+6. Record the action in both histories (that profile's and the Shadchan's) before handoff.
+7. If more than one profile was selected, they are **never merged into a single WhatsApp message** — Shadchanim don't want bundled profiles. Instead, after the first one is sent, PeerMatch shows a persistent "Send profile 2 of 3" prompt; each further profile requires its own explicit tap before the next `wa.me` navigation, and its own history entry pair, repeating until the queue is empty.
 
 ### Root cause (traced before fixing)
 
@@ -105,7 +112,22 @@ Both assume the *n*-th `.card` in the DOM corresponds to the *n*-th item in a fr
 - `peermatch-v11.js`: exposes `window.pmGetSelected(k)`, returning the real Set-backed selection (`selectedItems(k)` — a function that already existed internally, now just readable from outside). No second selection system was created.
 - `final-fixes-v107.js`: `directWhatsApp(k)` now reads `window.pmGetSelected(k)` and `window.pmGetSelected('shadchanim')` directly instead of `checked()`. Alerts clearly when 0 or 2+ Shadchanim are selected instead of silently doing nothing or falling through to a different handler. `checked()`/`stampCards()`/`visible()` (the DOM-reconstruction code) and the `data-pmRecordId` stamping are deleted — confirmed nothing else in the codebase read that attribute. The click listener now unconditionally owns `#pmWhatsApp-guys`/`#pmWhatsApp-girls` (it's the sole handler now, so it no longer needs to "peek" at counts before deciding whether to yield to a fallback).
 - `profile-share-v52.js`: `sendWhatsApp()`, `selectedShadchan()`, `chooseWhatsAppRecipient()`, `shareOneWhatsApp()`, `closeWaQueue()`/`renderWaQueue()`, and the WhatsApp branch of its click listener are deleted entirely. Its SMS path (`sendSms`, `shareOneSms`, the SMS queue dialog, `selectedItems`/`tracked` checkbox-tracking) and its `polishBar()` (which still *creates* both the WhatsApp and SMS buttons — v107 needs that button to exist) are untouched.
-- The actual `wa.me` navigation, phone normalization (`pmWhatsAppDigits` first, with a fallback), profile-text message body, and the paired one-entry-per-side history write (`saveShare`) are unchanged — this was a selection-reading fix only, reusing the already-proven send path.
+- At v113, the `wa.me` navigation and phone normalization inside `final-fixes-v107.js` were left as its own `waPhone()` (trying `pmWhatsAppDigits` first, with an inline fallback) — a **separate implementation** from the one the ordinary Shadchan-detail WhatsApp button actually uses. The profile-text message body and the paired one-entry-per-side history write (`saveShare`) were unchanged.
+
+### What changed at v114
+
+The user reported that the ordinary Shadchan-detail WhatsApp button (`peermatch-v19.js`'s `compose(x,'WhatsApp')`) already works reliably on their Android phone, and asked for the selected-profile flow to reuse that exact proven mechanism instead of maintaining a second implementation.
+
+Root cause of why the two buttons weren't on the same path: `#v19Wa` (Shadchan-detail) is bound once, directly, on a freshly-rendered element right after `openS()` renders it — nothing else ever touches that node. The selected-profile `#pmWhatsApp-guys`/`#pmWhatsApp-girls` button has no such stable identity: `peermatch-v11.js`'s `ensureSelectionBar()` rebuilds the *entire* selection bar via `bar.innerHTML=` on every single checkbox toggle (it's invoked from `renderP()`/`renderS()`), destroying and recreating the bar's children; the WhatsApp/SMS buttons are then re-added asynchronously afterward by `profile-share-v52.js`'s `polishBar()`, debounced through `requestAnimationFrame`. A button with that lifecycle can't be reliably bound with a single one-time `.onclick=` done anywhere else — which is exactly why `final-fixes-v107.js` had resorted to a document-wide capture-phase delegated listener. That's a workaround for node instability, not a bug by itself, but it does mean this flow's reliability depended on winning a capture-phase race against every other document-level click listener in the codebase (SMS, Email, phone-normalization's own listener, etc.) — the kind of layered-patch fragility this project's architecture notes flag repeatedly.
+
+**Important correction made mid-implementation:** the first pass at this fix made the selected-profile WhatsApp button *always* require exactly one selected Shadchan, which would have silently deleted Case A (profile-only, no Shadchan selected → general share/pick-any-recipient) — a pre-existing, intentional behavior the user explicitly did not want touched. The `profile-share-v52.js` section below reflects the corrected two-case design, not that first pass.
+
+Changes:
+- `peermatch-v19.js`: extracted the proven phone-normalization + `wa.me` URL construction out of `compose()`'s inline WhatsApp branch into `window.pmWhatsAppUrl(phone, text)` — one shared helper, using the exact same `normalizePhone()` already in this file. `compose()` itself now calls this helper instead of inlining the URL; its behavior (activity write, message body, navigation) is otherwise byte-identical to before.
+- `final-fixes-v107.js`: `directWhatsApp(k)` (Case B) now calls `window.pmWhatsAppUrl(sh.phone, text)` instead of its own `waPhone()`/manual `'https://wa.me/'+...` string-building — `waPhone()` is deleted. It is exposed as `window.pmSendSelectedWhatsApp` so the button owner (`profile-share-v52.js`) can call it directly. **The document-wide capture-phase click listener for `#pmWhatsApp-guys`/`#pmWhatsApp-girls` is deleted** — this file no longer listens for that click at all. It also no longer sends every selected profile in one merged message: `directWhatsApp` now builds a small queue (`{k, shadchanId, ids, index}`) persisted to `localStorage` under `pmWaSendQueue`, sends only the first profile immediately (the button tap itself is that profile's one required tap), and a bottom bar (`renderQueueBar()`, re-asserted on every existing `keepEditTop()` polish tick) prompts "Send profile N of M to <Shadchan>" for each remaining profile — each needs its own explicit "Send" tap, which performs exactly one `wa.me` navigation and one `saveShare()` history-pair write before advancing. Using `localStorage` (read fresh on every poll) rather than only an in-memory variable means the prompt survives PeerMatch losing focus while WhatsApp is open, and survives a full app reopen if navigation away from the tab reloads the page.
+- `profile-share-v52.js`: this is the file that had its **entire Case A implementation deleted** at v113 (see "What changed at v113" above) — that turned out to be too aggressive; the user clarified Case A is intentional, pre-existing, wanted-as-is behavior, not redundant code. It has been **restored** (recovered from the pre-v113 git history) as `sendWhatsApp()`, `chooseWhatsAppRecipient()`, `shareOneWhatsApp()`, `closeWaQueue()`/`renderWaQueue()`, and its own local `waPhone()` (Case A's phone helper intentionally differs from `window.pmWhatsAppUrl()`: Case A falls back to a bare `https://wa.me/` with no number when there's no recipient phone, letting WhatsApp's own contact picker take over, where Case B intentionally refuses and alerts instead) — with its selection-reading switched from the old tracked-Set/DOM-position code to `window.pmGetSelected(k)`, consistent with the rest of this fix. The now-fully-dead old reconstruction helpers (`tracked` Set, `visible()`, `itemForCheckbox()`, `selectedCount()`, old `selectedItems()`, `visibleShadchanim()`, old `selectedShadchan()`) and the checkbox-tracking/`pmClear-` branches of its click listener were removed — nothing reads them anymore now that `pmGetSelected` is authoritative. `polishBar()` (the button's actual owner/creator) binds `.onclick` directly at creation time to a small router: **exactly one Shadchan selected → `window.pmSendSelectedWhatsApp(k)`** (Case B, regardless of profile count — multi-profile queuing is `final-fixes-v107.js`'s job, not re-implemented here); **anything else (no Shadchan, or 2+ Shadchanim) → `sendWhatsApp(k)`** (Case A, unchanged general path, itself still queuing multiple selected profiles one at a time through its own pre-existing `renderWaQueue()` dialog since a single chosen recipient may still get several separate profiles).
+- History (`saveShare` in `final-fixes-v107.js`; `recordShare` in `profile-share-v52.js` for Case A, unchanged), and photo/image handling (untouched in both paths for the direct flow — Case B's selected-send flow remains text-only; attaching the stored photo was explicitly deferred by the user to a later, separate pass) are otherwise exactly as they were. Case A's existing Web-Share-with-photo-then-`wa.me`-fallback behavior was never touched.
+- Ordinary Shadchan-detail Call/SMS/Email/WhatsApp behavior is unchanged other than the internal refactor above — `compose()`'s control flow and every other branch are untouched.
 
 ### Platform limitation (unchanged)
 

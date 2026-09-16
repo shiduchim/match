@@ -122,29 +122,55 @@ This is critical for the WhatsApp selected-recipient workflow.
 - Search/filtering should not silently remap a selected checkbox to a different record.
 - Referral/grouped/collapsed Shadchan cards must map selection to the correct actual Shadchan record.
 
-## Selected profile -> selected Shadchan -> WhatsApp (v113 fix, pending device verification)
+## Selected profile -> selected Shadchan -> WhatsApp (v113 + v114 fix, pending device verification)
 
-v113 removed two independent DOM-position-based selection reconstructions: `final-fixes-v107.js` now reads `window.pmGetSelected(k)` (the real Set from `peermatch-v11.js`) as the authoritative selection source, and `profile-share-v52.js` had its competing selected-profile WhatsApp path removed entirely — it no longer reads WhatsApp selection at all. Test with one known profile and one known Shadchan with a valid WhatsApp number.
+v113 removed two independent DOM-position-based selection reconstructions: `final-fixes-v107.js` now reads `window.pmGetSelected(k)` (the real Set from `peermatch-v11.js`) as the authoritative selection source. v114 restored `profile-share-v52.js`'s general-recipient WhatsApp path (Case A, see below — it was over-aggressively deleted at v113 and has been recovered and re-pointed at `window.pmGetSelected`), added a direct "send to selected Shadchan" path (Case B) that reuses the exact same helper (`window.pmWhatsAppUrl`) the ordinary Shadchan-detail WhatsApp button uses, routes between the two at the button's own creation site instead of a document-wide listener, and — for Case B with multiple selected profiles — sends them one at a time through a persistent tap-per-profile queue rather than merging them into one message. Test with several known profiles and one known Shadchan with a valid WhatsApp number.
 
-- Select profile.
-- Select exactly one Shadchan.
+- **First confirm the ordinary Shadchan-detail WhatsApp button still works exactly as before** (open a Shadchan, tap WhatsApp, type a message, tap Continue) — this is the reference behavior Case B reuses; if this regresses, the shared helper broke something.
+
+### Case A — profile(s) selected, no Shadchan selected (must be unchanged)
+
+- Select one or more profiles, select **no** Shadchan.
+- Press WhatsApp from the selected-profile toolbar.
+- The existing recipient-choice dialog appears (pick an existing Shadchan or type a name/phone) exactly as before v113/v114 — this must not have regressed or been replaced by the direct-send path.
+- Confirm the existing "share multiple profiles one at a time" queue dialog still appears when 2+ profiles are selected, and Web-Share-with-photo-then-`wa.me`-fallback behavior is unchanged.
+- Confirm SMS-for-selected-profiles still works unchanged (shares this file with the restored/changed code — verify no regression).
+
+### Case B — exactly one Shadchan selected (single profile)
+
+- Select exactly one profile and exactly one Shadchan.
 - Press WhatsApp from selected-profile toolbar.
-- WhatsApp opens the selected Shadchan's chat/number directly — no recipient picker dialog anymore (that fallback dialog was removed along with the fragile reconstruction it belonged to).
+- WhatsApp opens the selected Shadchan's chat/number directly — no recipient picker dialog (that dialog belongs to Case A only).
 - Profile text is prefilled.
-- The phone is normalized correctly for WhatsApp.
-- Before handoff, profile history receives exactly one send/open entry.
-- Shadchan history receives exactly one corresponding entry.
-- No duplicate history entries are created.
+- The phone is normalized correctly for WhatsApp — compare against how the *same* Shadchan's number resolves via the ordinary Shadchan-detail WhatsApp button; they must produce identical digits since both go through `window.pmWhatsAppUrl`.
+- Before handoff, profile history receives exactly one send/open entry; Shadchan history receives exactly one corresponding entry; no duplicates.
+- No bottom "Send profile N of M" bar appears for a single profile — that queue UI is only for 2+ profiles.
 - Returning to PeerMatch does not corrupt selection state.
+- Toggle several checkboxes on and off a few times (to exercise the selection-bar rebuild), then press WhatsApp — it must still fire reliably; this is the specific instability (`ensureSelectionBar()`'s `innerHTML=` rebuild destroying/recreating the button) the v114 direct-binding change targets.
+- No photo/image is attached by this flow yet (deferred by design) — confirm the message is text-only and no share sheet/file picker appears.
 
-Also test, and confirm a clear `alert()` appears rather than nothing happening or the wrong Shadchan being used:
-- no Shadchan selected — expect "Select exactly one Shadchan..." alert,
-- more than one Shadchan selected — expect "Select only one Shadchan..." alert,
-- selected Shadchan has no phone — expect the existing "needs a phone number" alert.
+### Case B — exactly one Shadchan selected (multiple profiles, new v114 queue)
 
-Specifically retest with a **referred/grouped Shadchan** selected while collapsed (see "Referral/grouped Shadchan list" below) — this was the concrete mechanism identified for why the old DOM-position approach could pick the wrong Shadchan or miscount.
+- Select **three** profiles and exactly one Shadchan.
+- Press WhatsApp: the first profile's WhatsApp chat opens immediately (this tap is that profile's one required tap) — confirm the message contains **only that one profile's text**, never all three merged.
+- Confirm exactly one history entry pair (profile + Shadchan) was written for that first profile only so far.
+- Return to PeerMatch (e.g. app-switch back). A bottom bar should read "Send profile 2 of 3 to <Shadchan name>".
+- Confirm no second `wa.me` navigation happened automatically — it must wait for an explicit tap on the bar's Send button.
+- Tap Send: WhatsApp opens again with only profile 2's text; history gets exactly one new pair for profile 2.
+- Repeat for profile 3; after it sends, the bottom bar disappears (queue empty).
+- Confirm total history: each of the 3 profiles has exactly one send entry, the Shadchan has exactly 3 received entries (one per profile), never one merged entry.
+- Test **losing focus while WhatsApp is open mid-queue**: after profile 1 sends and the bar shows "2 of 3", background/switch away from PeerMatch for a while (or fully close and reopen the installed PWA) before returning — the bar must still show "2 of 3" and Send must still work correctly, not have lost or duplicated the queue.
+- Test **Cancel** on the bar: confirm it clears the queue and no further profiles from that batch are sent.
+- Test reopening a detail screen or toggling other checkboxes while the queue bar is showing — it must persist (re-created by the same polish cycle that reinforces `keepEditTop()`), not disappear or get stuck behind other UI.
 
-Confirm SMS-for-selected-profiles still works unchanged (untouched by this fix, but it shares `profile-share-v52.js` with the removed code — verify no regression).
+### Alerts (Case B edge cases)
+
+Confirm a clear `alert()` appears rather than nothing happening or the wrong Shadchan being used:
+- no Shadchan selected with 1 profile selected — this is Case A, not an alert (see above);
+- more than one Shadchan selected — expect "Select only one Shadchan..." alert;
+- selected Shadchan has no phone — expect the "needs a phone number" alert, and no queue is created.
+
+Specifically retest Case B with a **referred/grouped Shadchan** selected while collapsed (see "Referral/grouped Shadchan list" below) — this was the concrete mechanism identified for why the old DOM-position approach could pick the wrong Shadchan or miscount.
 
 ## Incoming Android Share -> PeerMatch
 
