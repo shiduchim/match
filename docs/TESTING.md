@@ -55,7 +55,7 @@ Use an existing image/screenshot attachment and, if needed, add a new test image
 - Share/save fallback still works if present.
 - Detail layout remains Profile -> Attachment -> Contacts after opening/closing image.
 
-## Attachment — PDF (critical current bug)
+## Attachment — PDF (v111 fix, pending device verification)
 
 Use a known-good PDF that PeerMatch can parse/store.
 

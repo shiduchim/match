@@ -119,21 +119,17 @@ Incoming WhatsApp strategy therefore relies on Android's explicit Share action. 
 
 ## Attachments, PDF, OCR
 
-`profile-pdf-ocr-v63.js` is the important live attachment parsing layer.
+`profile-pdf-ocr-v63.js` is the single live owner for saved attachments end to end: parsing (text extraction for the Add/Edit form) AND, as of v111, opening the saved attachment from Guy/Girl/Shadchan detail (`openPmAttachment`). Do not add attachment-opening logic to any other file — search `sw.js`'s `SCRIPTS` array for `.pmV63Attachment`/`profileAttachment` first.
 
-It loads PDF.js from cdnjs and Tesseract.js from jsDelivr. For PDF input it tries selectable text first and can fall back to rendering PDF pages to canvas and OCR'ing them. Screenshot/image input can also be OCR'd.
+It loads PDF.js from cdnjs and Tesseract.js from jsDelivr, through a shared `loadScript()`/`pdfLib()` pair that both the text-extraction path and the viewer path reuse (one loader, cached, not duplicated per feature). For PDF input it tries selectable text first and can fall back to rendering PDF pages to canvas and OCR'ing them. Screenshot/image input can also be OCR'd.
 
-Important distinction:
-- parsing/storage has worked,
-- viewing/opening saved PDFs is the current bug.
+`openPmAttachment(x)` is the saved-attachment viewer: images render directly via an object URL in `<img>`; PDFs render page-by-page onto canvases via `pdfLib()`, in a full-screen in-app overlay (`#pmAttachmentViewer`) with a Share/Save fallback button. Never `window.open(blobUrl)`, never a new tab, never a Blob URL navigation — that produced a broken `blob://localhost/...` page on Android and is why this consolidation happened. If `pdfLib()` itself fails to load (CDN/network blocked), the viewer shows an explicit "could not load" message rather than silently falling back to the old broken behavior; if PDF.js loads but a specific file fails to render, a separate generic message is shown. Either way the saved attachment itself is untouched.
 
-Images can be displayed directly with an object URL in an `<img>` and this works on the user's PWA.
+Historical files such as `attachment-view-v104.js` and `pdf-open-fix-v106.js` exist in the repo but are not live in the `SCRIPTS` list — they contain their own copies of the old broken `window.open(blobUrl)` pattern; do not edit them expecting behavior to change unless intentionally reintroduced.
 
-Opening a PDF with `window.open(blobUrl)` / a new tab produced a broken `blob://localhost/...` page on Android. A future stable solution should have ONE owner for in-app PDF viewing, ideally reusing the already-loaded `pdfjsLib` where possible.
+`final-fixes-v107.js` no longer contains any attachment-viewing code (removed at v111 when it was consolidated into `profile-pdf-ocr-v63.js`). It still owns direct selected-profile-to-Shadchan WhatsApp send (`directWhatsApp`) and reinforces top-right Edit placement (`keepEditTop`) — unrelated to attachments, left as is.
 
-Historical files such as `attachment-view-v104.js` and `pdf-open-fix-v106.js` exist in the repo but are not live in the v109 `SCRIPTS` list. Do not edit them expecting behavior to change unless intentionally reintroduced.
-
-`final-fixes-v107.js` is live and contains another in-app attachment viewer plus direct WhatsApp interception. It was moved early in script order to outrun older capture handlers, but user testing shows the PDF and selected-WhatsApp problems are still not resolved. Treat it as a temporary patch to consolidate/remove, not proof the underlying issues are fixed.
+`attachment-v66.js` (internally stamped `v67`) still repositions the Shadchan saved-attachment box into the compact `.v19ShadHead` header tile and sets its short label, but as of v111 no longer binds its own click handler — clicking it runs the same `openPmAttachment` that `profile-pdf-ocr-v63.js` wired in at creation time.
 
 ## Phone normalization
 

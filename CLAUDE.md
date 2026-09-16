@@ -93,7 +93,7 @@ A `wa.me` URL can preselect a phone and text, but cannot reliably attach a local
 
 Photos/images can be shown directly from Blob/object URLs inside the app and currently work.
 
-PDF attachments are stored and parsed, but **PDF opening is currently still broken** as of v109. Do not consider this fixed until tested on the installed Android PWA.
+PDF attachments are stored and parsed. A source-level fix for PDF opening was applied at **v111** (single owner: `profile-pdf-ocr-v63.js`'s `openPmAttachment`). Do not consider this fixed until tested on the installed Android PWA — see `docs/KNOWN_ISSUES.md` issue #1 for what changed and what still needs verification.
 
 Do not open PDFs in a new tab using `window.open(blobUrl)` or equivalent. That produced broken `blob://localhost/...` pages on the user's Android/PWA setup.
 
@@ -103,10 +103,12 @@ Do not open PDFs in a new tab using `window.open(blobUrl)` or equivalent. That p
 
 Read `docs/KNOWN_ISSUES.md` before touching attachments, WhatsApp selection, or detail layout.
 
-The three active regressions reported immediately before this documentation was created are:
+The three active regressions reported immediately before this documentation was created were:
 - PDF attachment still does not open.
 - selected profile -> selected Shadchan -> WhatsApp still does not work reliably.
 - attachment placement can move back toward the top-right/header area instead of staying under profile text.
+
+Current status (see `docs/KNOWN_ISSUES.md` for full detail on each): attachment/contacts layout placement was fixed at the source at v110, verified on the installed Android PWA. PDF opening was consolidated to a single owner at v111, pending device verification — do not assume it is fixed. The WhatsApp selected-send issue is untouched.
 
 ## Docs index
 

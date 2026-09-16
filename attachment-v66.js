@@ -31,15 +31,6 @@
   const phoneKey=p=>typeof window.pmPhoneKey==='function'?window.pmPhoneKey(p):String(p||'').replace(/\D/g,'');
   function saveQuiet(){try{const p=save();if(p?.catch)p.catch(e=>console.warn('PeerMatch v67 save',e));}catch(e){console.warn('PeerMatch v67 save',e);}}
 
-  function openBlob(blob,name){
-    if(!(blob instanceof Blob))return alert('This attachment is no longer available.');
-    const u=URL.createObjectURL(blob);let opened=false;
-    try{const w=window.open('','_blank');if(w){w.location.href=u;opened=true;}}catch(_){ }
-    if(!opened){try{const a=document.createElement('a');a.href=u;a.target='_blank';a.rel='noopener';a.style.display='none';document.body.appendChild(a);a.click();a.remove();opened=true;}catch(_){ }}
-    if(!opened){try{const a=document.createElement('a');a.href=u;a.download=name||'profile-attachment';document.body.appendChild(a);a.click();a.remove();}catch(_){alert('Could not open the attachment on this device.');}}
-    setTimeout(()=>URL.revokeObjectURL(u),300000);
-  }
-
   function fixReligiousInputs(){
     for(const el of document.querySelectorAll('#sheet .pmV65RelInput,#sheet #pmV65RelForm input,#sheet #pmV65ShadRel input')){
       if(el.dataset.pmV67Rel==='1')continue;el.dataset.pmV67Rel='1';
@@ -75,7 +66,9 @@
   function moveShadAttachment(id){
     const sheet=document.getElementById('sheet'),x=rec('shadchanim',id),head=sheet?.querySelector('.v19ShadHead');if(!sheet||!x||!head)return;
     const box=sheet.querySelector('.pmV63Attachment');if(!box)return;box.classList.add('pmV67ShadAttachment');
-    const btn=box.querySelector('button');if(btn&&btn.dataset.pmV67Attach!=='1'){btn.dataset.pmV67Attach='1';btn.textContent='PDF / screenshot';btn.onclick=e=>{e.preventDefault();e.stopPropagation();if(!x.profileAttachment)return alert('This attachment is not available.');openBlob(x.profileAttachment,x.profileAttachmentName||'profile-attachment');};}
+    /* Label only, for the compact header tile. Click handling for the saved
+       attachment is owned entirely by profile-pdf-ocr-v63.js (openPmAttachment). */
+    const btn=box.querySelector('button');if(btn&&btn.dataset.pmV67Attach!=='1'){btn.dataset.pmV67Attach='1';btn.textContent='PDF / screenshot';}
     if(box.parentElement!==head)head.appendChild(box);
   }
 

@@ -95,6 +95,8 @@ The `window.open(blobUrl)` approach was tested and failed on the installed Andro
 
 Decision: do not use new-tab Blob URLs for PDFs. Use one in-app PDF viewer owner, ideally reusing PDF.js already used by parsing.
 
+Implemented at v111: `profile-pdf-ocr-v63.js`'s `openPmAttachment()`, reusing that file's own `pdfLib()` loader. See `docs/KNOWN_ISSUES.md` issue #1 for what was removed and what still needs device testing.
+
 ## Attachment placement
 
 Old code moved attachment controls/blocks into top tools/header areas for compactness. The user rejected this for detail pages.

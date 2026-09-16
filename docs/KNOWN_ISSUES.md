@@ -1,14 +1,18 @@
 # PeerMatch Known Issues
 
-Status captured at app version **v110**.
+Status captured at app version **v111**.
 
 This file describes issues the user has actually reported or that are strongly evidenced by current live code. Do not mark an issue fixed based only on code inspection; the installed Android PWA must be tested.
 
-## 1. PDF attachment still does not open
+## 1. PDF attachment does not open
 
-### User-visible behavior
+### Status: source-level fix applied at v111, not yet device-tested
 
-Photos open correctly, but saved PDF attachments still do not.
+Do not mark this resolved from code reading alone — confirm on the installed Android PWA per `docs/TESTING.md`. This section describes the state **before** the v111 fix, followed by what changed.
+
+### User-visible behavior (prior to the v111 fix)
+
+Photos opened correctly, but saved PDF attachments did not.
 
 Earlier behavior opened Chrome to a temporary URL such as:
 
@@ -16,38 +20,35 @@ Earlier behavior opened Chrome to a temporary URL such as:
 
 Chrome then showed the page as unavailable.
 
-### What is known
+### Root cause (traced before fixing)
 
-- The PDF is generally being stored and parsed; the failure is in viewing/opening, not necessarily file storage.
-- `profile-pdf-ocr-v63.js` is live and already loads PDF.js for PDF parsing/text extraction.
-- `final-fixes-v107.js` is live and includes an in-app PDF.js renderer, but user testing after the v108/v109 sequence still reported PDF opening as broken.
-- `attachment-v66.js` (internally stamped `v67`) contains an older `openBlob()` path and Shadchan attachment button logic (`moveShadAttachment()`) that can open Blob URLs in a new window/tab. (Corrected: earlier revisions of this document misattributed this to `ui-fixes-v73.js`, which contains no attachment logic.)
-- `profile-pdf-ocr-v63.js` historically created saved-attachment detail buttons that opened an object URL in a new tab.
-- Historical `attachment-view-v104.js` and `pdf-open-fix-v106.js` remain in the repo but are NOT in the current `sw.js` `SCRIPTS` array and therefore should not be assumed live.
+Three live files all bound click behavior to the same `.pmV63Attachment button`, with only one of them correct, racing via independent `MutationObserver`s and idempotency flags blind to each other:
+- `profile-pdf-ocr-v63.js` `detailAttachment()` always created the button with `onclick = () => window.open(URL.createObjectURL(x.profileAttachment), '_blank')` — the broken path, for both Guy/Girl and Shadchan.
+- `attachment-v66.js` (internally stamped `v67`) `moveShadAttachment()`, Shadchan-only, independently re-bound the same button to its own broken `openBlob()` (`window.open('','_blank')` + `location.href=`, falling back to an `<a target=_blank>` click), guarded by `dataset.pmV67Attach`.
+- `final-fixes-v107.js` `bindAttachment()` was the actual attempted fix: cloned the button and rebound it to an in-app PDF.js/image viewer (`openAttachment`), guarded by `dataset.pmV107Bound`, plus a page-wide capture-phase click interceptor as a safety net.
 
-### Desired fix
+(Corrected: earlier revisions of this document misattributed the `openBlob()`/Shadchan-attachment logic to `ui-fixes-v73.js`, which contains no attachment code at all — it's `attachment-v66.js`.)
 
-There should be one owner for saved attachment opening.
+Historical `attachment-view-v104.js` and `pdf-open-fix-v106.js` remain in the repo with their own copies of this same broken pattern but are NOT in the current `sw.js` `SCRIPTS` array — not live, do not edit expecting behavior to change.
 
-For PDF:
-- render in-app,
-- do not use `window.open(blobUrl)`, target `_blank`, or navigate the whole PWA to a Blob URL,
-- preferably reuse already-loaded `window.pdfjsLib` when available,
-- preserve a graceful Share/Save fallback.
+### What changed at v111
 
-For image attachments:
-- keep the currently working in-app image behavior.
+Consolidated to one owner: `profile-pdf-ocr-v63.js`'s `openPmAttachment(x)`, reusing the file's own existing `pdfLib()` PDF.js loader (the same one already used for attachment text extraction — no second CDN loader was introduced). `detailAttachment()` now wires the button directly to `openPmAttachment` at creation time instead of creating it broken and relying on a second script to fix it after the fact.
 
-### Debugging note
+Removed/neutralized:
+- `profile-pdf-ocr-v63.js`: the inline `window.open(blobUrl,'_blank')` onclick — replaced with a call to `openPmAttachment`.
+- `attachment-v66.js`: the `openBlob()` function and its rebind of the button's `onclick` — deleted entirely. `moveShadAttachment()` still repositions the box into the Shadchan header and sets its compact label; it no longer touches click behavior.
+- `final-fixes-v107.js`: `bindAttachment()`, the capture-phase attachment click interceptor, `openAttachment()`, `typeOf()`/`blobOf()`/`pdfLib()`/`closeViewer()`, and the `PDF_JS`/`PDF_WORKER` constants — all deleted (this logic now lives solely in `profile-pdf-ocr-v63.js`). The file's WhatsApp direct-send (`directWhatsApp`) and Edit-top reinforcement (`keepEditTop`) are untouched.
 
-Search every LIVE script for:
-- `URL.createObjectURL`
-- `window.open`
-- `_blank`
-- `.pmV63Attachment`
-- `profileAttachment`
+Behavior preserved/added:
+- Images still render directly via `<img src="objectURL">`, unchanged.
+- PDFs render in-app via PDF.js, page-by-page, onto canvases — never a new tab, never a raw Blob URL navigation.
+- If PDF.js itself fails to load (e.g. NetSpark/network blocking the cdnjs request), the viewer shows an explicit message that the viewer could not load and to check the connection, distinct from a generic render failure — it does not fall back to opening a Blob URL.
+- The saved attachment is never deleted or altered by a failed preview; Share/Save (native share sheet, or a download link) remains available regardless of preview success.
 
-Then trace event order, including capture-phase document listeners and cloned/replaced buttons.
+### Debugging note (for any future attachment work)
+
+Before adding any new attachment-related code, search every LIVE script (cross-reference `sw.js`'s `SCRIPTS` array) for `.pmV63Attachment`, `profileAttachment`, `URL.createObjectURL`, and `window.open` to confirm `profile-pdf-ocr-v63.js` is still the only one binding a click handler to the saved-attachment button.
 
 ## 2. Selected profile -> selected Shadchan -> WhatsApp is still not fixed
 
