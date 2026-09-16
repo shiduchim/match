@@ -1,14 +1,14 @@
 # PeerMatch Known Issues
 
-Status captured at app version **v111**.
+Status captured at app version **v112**.
 
 This file describes issues the user has actually reported or that are strongly evidenced by current live code. Do not mark an issue fixed based only on code inspection; the installed Android PWA must be tested.
 
 ## 1. PDF attachment does not open
 
-### Status: source-level fix applied at v111, not yet device-tested
+### Status: v111's in-app PDF.js viewer still failed on-device; v112 hands PDFs off to the OS instead, not yet device-tested
 
-Do not mark this resolved from code reading alone — confirm on the installed Android PWA per `docs/TESTING.md`. This section describes the state **before** the v111 fix, followed by what changed.
+Do not mark this resolved from code reading alone — confirm on the installed Android PWA per `docs/TESTING.md`. This section describes the state **before** the v111 fix, then v111, then what changed at v112.
 
 ### User-visible behavior (prior to the v111 fix)
 
@@ -45,6 +45,19 @@ Behavior preserved/added:
 - PDFs render in-app via PDF.js, page-by-page, onto canvases — never a new tab, never a raw Blob URL navigation.
 - If PDF.js itself fails to load (e.g. NetSpark/network blocking the cdnjs request), the viewer shows an explicit message that the viewer could not load and to check the connection, distinct from a generic render failure — it does not fall back to opening a Blob URL.
 - The saved attachment is never deleted or altered by a failed preview; Share/Save (native share sheet, or a download link) remains available regardless of preview success.
+
+### What changed at v112
+
+The user reported the v111 in-app PDF.js viewer **still fails** on their installed Android PWA. Rather than layer another fix on top of the renderer, the renderer was removed for PDFs: `openPmAttachment(x)` no longer attempts to render a PDF in-app at all. For any non-image attachment (PDF, or any other type) it now goes straight to `shareOrDownloadAttachment(x, blob, type)`:
+1. builds a real `File` from the saved Blob using its original filename and MIME type,
+2. tries `navigator.share({files:[file]})` (gated by `navigator.canShare`) so Android's native share sheet can hand the file to any installed PDF-capable app,
+3. if sharing is unavailable or the type isn't shareable, falls back to a named `<a download>` click, which Chrome's download manager writes to Android's Downloads folder as a real file — never a `window.open`/navigation to a `blob:` URL.
+
+`pdfLib()` (the PDF.js loader) is untouched and still used by `pdfText()` for local text extraction when a PDF is attached — PDF.js is no longer used anywhere in the *opening* path.
+
+Images are unaffected: `openPmAttachment` still opens them in the same in-app full-screen viewer as before (its own Share/Save button now calls the same `shareOrDownloadAttachment` helper instead of duplicating that logic inline).
+
+The `.pmV63Attachment button` click still routes through `detailAttachment()` → `openPmAttachment()` exclusively — no other live file binds a handler to it; ownership is unchanged from v111.
 
 ### Debugging note (for any future attachment work)
 

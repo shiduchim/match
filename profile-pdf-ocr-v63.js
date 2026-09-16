@@ -188,40 +188,41 @@
   function blobOf(x){const b=x?.profileAttachment;if(!(b instanceof Blob))return null;const t=typeOf(x);try{return String(b.type||'').toLowerCase()===t?b:new Blob([b],{type:t});}catch(_){return b;}}
   let viewerImageUrl=null;
   function closeAttachmentViewer(){document.getElementById('pmAttachmentViewer')?.remove();if(viewerImageUrl){URL.revokeObjectURL(viewerImageUrl);viewerImageUrl=null;}}
+
+  /* Hand the attachment to the OS: Web Share (with the real file, so Android offers
+     PDF-capable apps) first, a named download as fallback. Never window.open a blob:
+     URL or navigate the tab to one — that is the behavior that fails on-device. */
+  async function shareOrDownloadAttachment(x,blob,type){
+    const name=x.profileAttachmentName||'profile-attachment';
+    let f=null;try{f=new File([blob],name,{type});}catch(_){ }
+    if(f&&navigator.share&&(!navigator.canShare||navigator.canShare({files:[f]}))){
+      try{await navigator.share({files:[f],title:name});return;}
+      catch(e){if(e?.name==='AbortError')return;}
+    }
+    try{
+      const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);
+    }catch(e){console.warn('PeerMatch attachment handoff',e);alert('Could not open or download this attachment on this device.');}
+  }
+
   async function openPmAttachment(x){
     const blob=blobOf(x);if(!blob)return alert('This attachment is no longer available.');
     closeAttachmentViewer();
+    const type=typeOf(x);
+    if(!type.startsWith('image/')){
+      /* PDFs (and any other non-image attachment): no in-app renderer. An in-app PDF.js
+         viewer previously failed on the user's Android/PWA setup. PDF.js remains in this
+         file only for text extraction when a PDF is attached, not for opening one. */
+      await shareOrDownloadAttachment(x,blob,type);
+      return;
+    }
     const d=document.createElement('div');d.id='pmAttachmentViewer';d.style.cssText='position:fixed;inset:0;z-index:60000;background:#eef1f3;display:flex;flex-direction:column';
-    d.innerHTML='<div style="display:flex;gap:7px;align-items:center;padding:9px;background:#fff;border-bottom:1px solid #d9e0e4"><div id="pmAttachmentViewerTitle" style="flex:1;min-width:0;font-size:12px;font-weight:850;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div><button id="pmAttachmentViewerSave" class="secondary" type="button">Share / save</button><button id="pmAttachmentViewerClose" class="primary" type="button">Close</button></div><div id="pmAttachmentViewerBody" style="flex:1;min-height:0;overflow:auto;padding:9px"><div style="text-align:center;color:#73818b;padding:24px 10px">Opening attachment…</div></div>';
+    d.innerHTML='<div style="display:flex;gap:7px;align-items:center;padding:9px;background:#fff;border-bottom:1px solid #d9e0e4"><div id="pmAttachmentViewerTitle" style="flex:1;min-width:0;font-size:12px;font-weight:850;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div><button id="pmAttachmentViewerSave" class="secondary" type="button">Share / save</button><button id="pmAttachmentViewerClose" class="primary" type="button">Close</button></div><div id="pmAttachmentViewerBody" style="flex:1;min-height:0;overflow:auto;padding:9px"></div>';
     d.querySelector('#pmAttachmentViewerTitle').textContent=x.profileAttachmentName||'Profile attachment';
     document.body.appendChild(d);
     d.querySelector('#pmAttachmentViewerClose').onclick=closeAttachmentViewer;
-    d.querySelector('#pmAttachmentViewerSave').onclick=async()=>{
-      const name=x.profileAttachmentName||'profile-attachment',type=typeOf(x);let f=null;
-      try{f=new File([blob],name,{type});}catch(_){ }
-      if(f&&navigator.share&&(!navigator.canShare||navigator.canShare({files:[f]}))){try{await navigator.share({files:[f],title:name});return;}catch(e){if(e?.name==='AbortError')return;}}
-      const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);
-    };
-    const body=d.querySelector('#pmAttachmentViewerBody'),type=typeOf(x);
-    if(type.startsWith('image/')){
-      const u=URL.createObjectURL(blob);viewerImageUrl=u;body.innerHTML='';const img=document.createElement('img');img.src=u;img.style.cssText='display:block;max-width:100%;max-height:100%;margin:auto;object-fit:contain';body.appendChild(img);
-      return;
-    }
-    if(type!=='application/pdf'){body.innerHTML='<div style="text-align:center;color:#73818b;padding:24px 10px">Use Share / save for this file type.</div>';return;}
-    let lib;
-    try{lib=await pdfLib();}
-    catch(e){
-      console.warn('PeerMatch PDF viewer load',e);
-      body.innerHTML='<div style="text-align:center;color:#8a4b20;padding:24px 10px">The PDF viewer could not load (check your internet connection). The attachment is still saved — use Share / save to open it in another app.</div>';
-      return;
-    }
-    try{
-      const bytes=new Uint8Array(await blob.arrayBuffer()),pdf=await lib.getDocument({data:bytes}).promise;body.innerHTML='';const max=Math.max(280,Math.min(window.innerWidth-18,900));
-      for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i),base=page.getViewport({scale:1}),scale=Math.max(.55,Math.min(1.8,max/base.width)),vp=page.getViewport({scale}),c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);c.style.cssText='display:block;max-width:100%;height:auto;margin:0 auto 10px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.14)';body.appendChild(c);await page.render({canvasContext:c.getContext('2d',{alpha:false}),viewport:vp}).promise;}
-    }catch(e){
-      console.warn('PeerMatch PDF render',e);
-      body.innerHTML='<div style="text-align:center;color:#73818b;padding:24px 10px">Could not render this PDF. The attachment is still saved — use Share / save.</div>';
-    }
+    d.querySelector('#pmAttachmentViewerSave').onclick=()=>shareOrDownloadAttachment(x,blob,type);
+    const body=d.querySelector('#pmAttachmentViewerBody');
+    const u=URL.createObjectURL(blob);viewerImageUrl=u;const img=document.createElement('img');img.src=u;img.style.cssText='display:block;max-width:100%;max-height:100%;margin:auto;object-fit:contain';body.appendChild(img);
   }
 
   function detailAttachment(x,isShad){

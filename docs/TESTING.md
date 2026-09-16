@@ -55,21 +55,20 @@ Use an existing image/screenshot attachment and, if needed, add a new test image
 - Share/save fallback still works if present.
 - Detail layout remains Profile -> Attachment -> Contacts after opening/closing image.
 
-## Attachment — PDF (v111 fix, pending device verification)
+## Attachment — PDF (v112 fix, pending device verification)
 
-Use a known-good PDF that PeerMatch can parse/store.
+v111 tried an in-app PDF.js renderer; it still failed on the user's Android PWA. v112 removes in-app PDF rendering entirely and hands the PDF to the OS instead. Use a known-good PDF that PeerMatch can parse/store.
 
 - PDF is still attached after save and app restart.
-- Tap Open PDF/Open attachment.
-- PDF displays **inside PeerMatch**.
-- It must NOT navigate to `blob://localhost/...`.
-- It must NOT open an unavailable Chrome tab.
-- Multi-page PDF can scroll through pages.
-- Viewer Close returns to the same detail record.
-- Share/save fallback works if preview cannot render.
-- NetSpark/network failure of PDF.js is handled visibly and does not delete the stored attachment.
+- Tap Open PDF.
+- It must NOT navigate to `blob://localhost/...` and must NOT open an unavailable Chrome tab.
+- It must NOT attempt to render inside PeerMatch at all (no in-app PDF viewer for PDFs anymore).
+- The Android share sheet should appear, offering installed apps that can handle a PDF (a PDF viewer, Drive, Gmail, etc.). Pick one and confirm the actual PDF opens correctly in it.
+- If share is unavailable/declined on this device, confirm a real named download lands in Android Downloads and opens correctly from there.
+- The stored attachment is unaffected either way — reopen the same record and confirm Open PDF still works.
+- Confirm image attachments are unaffected: Open attachment for an image still opens the in-app image viewer exactly as before, including its own Share/save button.
 
-Test on the installed Android PWA, because desktop Chrome success is not sufficient.
+Test on the installed Android PWA — this is specifically about Android's share/download behavior, so desktop Chrome is not representative.
 
 ## Add/Edit attachment form
 

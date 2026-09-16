@@ -93,9 +93,17 @@ Preferred direction: one persistent selection owner/API, not parallel selection 
 
 The `window.open(blobUrl)` approach was tested and failed on the installed Android PWA: Chrome opened a `blob://localhost/...` page and reported it unavailable.
 
-Decision: do not use new-tab Blob URLs for PDFs. Use one in-app PDF viewer owner, ideally reusing PDF.js already used by parsing.
+Decision (v111, superseded): do not use new-tab Blob URLs for PDFs. Use one in-app PDF viewer owner, ideally reusing PDF.js already used by parsing. Implemented as `profile-pdf-ocr-v63.js`'s `openPmAttachment()`.
 
-Implemented at v111: `profile-pdf-ocr-v63.js`'s `openPmAttachment()`, reusing that file's own `pdfLib()` loader. See `docs/KNOWN_ISSUES.md` issue #1 for what was removed and what still needs device testing.
+**v111's in-app PDF.js viewer was also tested on the installed Android PWA and still failed.**
+
+Decision (v112, current): stop trying to render PDFs in-app at all. A PWA holding a Blob only in memory/IndexedDB (no server URL, no filesystem path) has exactly two reliable browser-native ways to hand it to Android without a `blob:` navigation:
+1. Web Share API with files (`navigator.share({files:[file]})`, gated by `navigator.canShare`) — lets Android's native share sheet offer any installed app that handles the MIME type. This is the primary path.
+2. A named `<a download>` click — routed through the browser's download manager (not the navigation/rendering stack), landing in Android's Downloads folder. This is the fallback when sharing is unavailable or declined by the platform.
+
+There is no more reliable option short of uploading to a real server and opening an `https://` URL, which conflicts with the free/local-only/privacy constraints and was not requested. `pdfLib()`/PDF.js stays in `profile-pdf-ocr-v63.js` for text extraction only — it is no longer used to open/render a PDF.
+
+Do not reintroduce in-app PDF rendering without a specific reason to revisit this: it has now failed twice on the user's actual device. See `docs/KNOWN_ISSUES.md` issue #1 for what was removed and what still needs device testing.
 
 ## Attachment placement
 

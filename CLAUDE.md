@@ -93,11 +93,11 @@ A `wa.me` URL can preselect a phone and text, but cannot reliably attach a local
 
 Photos/images can be shown directly from Blob/object URLs inside the app and currently work.
 
-PDF attachments are stored and parsed. A source-level fix for PDF opening was applied at **v111** (single owner: `profile-pdf-ocr-v63.js`'s `openPmAttachment`). Do not consider this fixed until tested on the installed Android PWA — see `docs/KNOWN_ISSUES.md` issue #1 for what changed and what still needs verification.
+PDF attachments are stored and parsed. **v111's in-app PDF.js viewer still failed on the user's installed Android PWA.** At **v112**, PDF opening no longer renders in-app at all: `profile-pdf-ocr-v63.js`'s `openPmAttachment` builds a real `File` from the saved Blob and hands it to the OS — `navigator.share({files:[file]})` first (Android's native share sheet, letting any installed PDF-capable app open it), falling back to a named `<a download>` (lands in Android Downloads) if sharing is unavailable. Do not consider this fixed until tested on the installed Android PWA — see `docs/KNOWN_ISSUES.md` issue #1 for what changed and what still needs verification.
 
-Do not open PDFs in a new tab using `window.open(blobUrl)` or equivalent. That produced broken `blob://localhost/...` pages on the user's Android/PWA setup.
+Do not open PDFs in a new tab using `window.open(blobUrl)` or equivalent, and do not reintroduce in-app PDF rendering (PDF.js) for the opening path without a specific reason to revisit v112's decision — it has failed on-device twice already (in-app render at v111, `window.open(blobUrl)` before that).
 
-`profile-pdf-ocr-v63.js` already uses PDF.js for PDF parsing/text extraction; prefer one in-app PDF viewer owner rather than multiple capture handlers.
+`profile-pdf-ocr-v63.js` still uses PDF.js (`pdfLib()`) for PDF text extraction/OCR when a PDF is attached — that part is unaffected. It is the single owner for both parsing and opening; do not add a competing handler in another file.
 
 ## Current open problems
 
@@ -108,7 +108,7 @@ The three active regressions reported immediately before this documentation was 
 - selected profile -> selected Shadchan -> WhatsApp still does not work reliably.
 - attachment placement can move back toward the top-right/header area instead of staying under profile text.
 
-Current status (see `docs/KNOWN_ISSUES.md` for full detail on each): attachment/contacts layout placement was fixed at the source at v110, verified on the installed Android PWA. PDF opening was consolidated to a single owner at v111, pending device verification — do not assume it is fixed. The WhatsApp selected-send issue is untouched.
+Current status (see `docs/KNOWN_ISSUES.md` for full detail on each): attachment/contacts layout placement was fixed at the source at v110, verified on the installed Android PWA. PDF opening was consolidated to a single in-app-viewer owner at v111, which still failed on-device; v112 replaced in-app PDF rendering with an OS handoff (Web Share, then download), pending device verification — do not assume it is fixed. The WhatsApp selected-send issue is untouched.
 
 ## Docs index
 
