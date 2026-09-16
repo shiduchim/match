@@ -11,7 +11,12 @@
 (function(){
   document.documentElement.dataset.peerMatchVersion='120';
 
-  const KEY='pmGeneralWaQueue';
+  /* v118 used pmGeneralWaQueue. Use a new key so its still-loaded observer cannot render
+     a competing old queue bar from v120 state. Clear any stale v118 queue once. */
+  const KEY='pmGeneralWaQueueV120';
+  try{localStorage.removeItem('pmGeneralWaQueue');}catch(e){}
+  document.getElementById('pmV118QueueBar')?.remove();
+
   let sharingPhoto=false,historySeq=0,scheduled=false;
   const trim=v=>String(v||'').trim();
   const cleanName=v=>trim(v).replace(/\*/g,'')||'Unnamed profile';
@@ -151,6 +156,11 @@
   function bindBar(k){
     const bar=document.getElementById('pmSelected-'+k);if(!bar||bar.classList.contains('hidden'))return;
     const b=bar.querySelector('#pmWhatsApp-'+k);if(!b||b.dataset.pmV120Bound==='1')return;
+    /* If v120 runs first on a freshly recreated button, prevent v118/v119 observers from
+       later rebinding over this final owner. If they already ran, this assignment simply
+       replaces their wrapper with the v120 router below. */
+    b.dataset.pmV118Bound='1';
+    b.dataset.pmV119Bound='1';
     b.dataset.pmV120Bound='1';
     b.onclick=()=>{
       if(typeof window.pmRouteMultiShadchanWhatsApp==='function'&&window.pmRouteMultiShadchanWhatsApp())return;
