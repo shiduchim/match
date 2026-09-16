@@ -105,7 +105,7 @@
 
     addField(box,'Tags',x.tags,'Add tags','tags');
     addField(box,'Religious level',x.religiousLevel,'e.g. strong, moderate, light','religiousLevel');
-    addField(box,'Religious details',x.religiousDetails,'e.g. Chabad, Breslev, Yeshivish, tzniut, long skirt','religiousDetails');
+    addField(box,'Religious details',x.religiousDetails,'e.g. Chabad, Breslev, Yeshivish, tzniut','religiousDetails');
 
     const quick=sheet.querySelector('.pmInlineTools');
     if(quick)quick.insertAdjacentElement('afterend',box);
