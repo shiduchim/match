@@ -2,7 +2,7 @@ name: Build PeerMatch Android
 
 on:
   push:
-    branches: [main]
+    branches: [main, test/whatsapp-photo-recipient]
     paths:
       - 'android/**'
       - '.github/workflows/android.yml'
@@ -54,30 +54,30 @@ jobs:
             -keyalg RSA \
             -keysize 4096 \
             -validity 10000 \
-            -dname "CN=PeerMatch, OU=Private Android App, O=PeerMatch, L=Tzfat, ST=Northern District, C=IL"
+            -dname "CN=PeerMatch WhatsApp Test, OU=Experimental, O=PeerMatch, C=IL"
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
             --ks signing-backup/peermatch-release.jks \
             --ks-key-alias peermatch_release \
             --ks-pass "pass:$PASS" \
             --key-pass "pass:$PASS" \
-            --out release-output/PeerMatch-v1.0.0.apk \
+            --out release-output/PeerMatch-WA-Photo-Test.apk \
             android/app/build/outputs/apk/release/app-release-unsigned.apk
 
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-output/PeerMatch-v1.0.0.apk | tee release-output/signing-info.txt
-          sha256sum release-output/PeerMatch-v1.0.0.apk | tee release-output/apk-sha256.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-output/PeerMatch-WA-Photo-Test.apk | tee release-output/signing-info.txt
+          sha256sum release-output/PeerMatch-WA-Photo-Test.apk | tee release-output/apk-sha256.txt
 
-      - name: Upload signed PeerMatch release
+      - name: Upload signed WhatsApp photo test
         uses: actions/upload-artifact@v4
         with:
-          name: PeerMatch-Release-v1.0.0
+          name: PeerMatch-WA-Photo-Test
           path: release-output/
           if-no-files-found: error
 
       - name: Upload signing backup
         uses: actions/upload-artifact@v4
         with:
-          name: PeerMatch-Signing-Backup-v1
+          name: PeerMatch-WA-Photo-Test-Signing-Backup
           path: signing-backup/
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 30
