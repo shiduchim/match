@@ -96,7 +96,7 @@
     if(items.length===1&&hasPdf(items[0])&&shads.length>1){
       for(let i=0;i<shads.length;i++){
         const sh=shads[i];
-        const ok=confirm('Send '+(clean(items[0].name)||'this profile')+' PDF to '+(clean(sh.name)||'Shadchan')+'?\n\n'+(i+1)+' of '+shads.length);
+        const ok=confirm('Send '+(clean(items[0].name)||'this profile')+' PDF to '+(clean(sh.name)||'Shadchan')+'?\n\n'+(i+1)+' of '+shads.length+'\n\nChoose '+(channel==='Email'?'your email app':'WhatsApp')+' and then '+(clean(sh.name)||'that Shadchan')+' in the share screen.');
         if(!ok)continue;
         const sent=await shareOnePdf(k,items[0],channel,sh);if(!sent)break;
       }
@@ -104,6 +104,10 @@
     }
 
     const shad=shads.length===1?shads[0]:null;
+    if(items.length===1&&hasPdf(items[0])&&shad){
+      const ok=confirm('Send '+(clean(items[0].name)||'this profile')+' PDF to '+(clean(shad.name)||'Shadchan')+'?\n\nChoose '+(channel==='Email'?'your email app':'WhatsApp')+' and then '+(clean(shad.name)||'that Shadchan')+' in the share screen.');
+      if(!ok)return true;
+    }
     for(let i=0;i<items.length;i++){
       const x=items[i];
       if(items.length>1&&!confirm('Share '+(clean(x.name)||'profile')+' ('+(i+1)+' of '+items.length+')?'))continue;
