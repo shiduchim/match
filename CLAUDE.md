@@ -1,183 +1,179 @@
 # PeerMatch — Claude Code Project Brief
 
-PeerMatch is a browser/PWA shidduch relationship tracker for one current user. It tracks Guys, Girls, Shadchanim, profiles, contacts, referrals, history, reminders, attachments, and sharing workflows.
+Start with **`CLAUDE_HANDOFF.md`**. It contains the detailed current handoff, recent bug history, device-verification status, and safe development procedure.
 
-## Read this first
+PeerMatch is a browser/PWA shidduch relationship tracker. It tracks Guys, Girls, Shadchanim, profiles, contacts, referrals, history, reminders, attachments, sharing, Make Match, and backup/restore.
 
-This repo is NOT a normal single-file app. `index.html` is mostly the shell. `sw.js` contains the authoritative `SCRIPTS` array and injects those JavaScript files into navigation responses in exactly that order.
+## Live runtime source of truth
 
-**The live runtime file list is `sw.js` -> `SCRIPTS`.** A root `.js` file that is not in that array should be treated as historical/dead unless another live file explicitly imports it.
+`index.html` is mostly the shell. **`sw.js -> SCRIPTS` is the authoritative ordered live runtime list.**
 
-Load order is critical. Many files monkey-patch globals such as `openP`, `openS`, `renderP`, and `renderS`, attach capture-phase click handlers, and run `MutationObserver`s. A later or earlier handler can silently override another patch.
+A root JS file that is not in `SCRIPTS` is historical/dead unless another live file explicitly imports it.
 
-Before adding a new override, find the current owner and remove/fix the conflicting behavior at the source. Prefer consolidation over another patch layer.
+Load order matters. The codebase has many wrappers around `openP`, `openS`, `renderP`, `renderS`, direct `.onclick` replacements, capture listeners, and MutationObservers. Before adding an override, identify the current owner and all competing live handlers.
 
 ## Current version
 
-Current PWA/service-worker version: **v123**.
+Current intended PWA/service-worker version: **v127**.
 
-Current `main` at the time of this update: `8a445f9da88d953bd3605c6b34c691598da63908` (`v123: refine Looking for layout under profile`).
+For runtime changes:
 
-Version source of truth: `const VERSION='...'` in `sw.js`.
+1. fetch current `main` and current file SHA,
+2. inspect `sw.js`,
+3. edit the true live owner,
+4. bump `VERSION` in `sw.js`,
+5. keep `SCRIPTS` ordering intentional,
+6. verify GitHub Pages deployment,
+7. tell the user to fully close/reopen the installed PWA.
 
-For a runtime code change:
-1. update the relevant live file(s),
-2. bump `VERSION` in `sw.js`,
-3. make sure any new runtime file is added to `SCRIPTS`,
-4. preserve script ordering deliberately,
-5. tell the user to fully close/reopen the installed PWA so the new service worker activates.
+Docs-only changes do not require a version bump.
 
-Documentation-only changes do not require a PWA version bump.
+## Data safety
 
-The GitHub Pages workflow now reads `VERSION` and `SCRIPTS` directly from `sw.js`, verifies that all live files exist, and deploys that exact runtime instead of maintaining a second hard-coded script list.
-
-## Persistence / data safety
-
-- Browser-local PWA data is important. Do not perform destructive migrations casually.
 - IndexedDB database: `PeerMatchDB`.
-- Known stores include `kv` and `inbox`.
-- Main record collections are exposed through `data.guys`, `data.girls`, and `data.shadchanim`.
-- Use the app's existing `save()`/load mechanisms unless a persistence change is explicitly required.
-- Preserve old records and fields when adding new fields. Prefer additive changes.
-- Never fabricate historical dates or history entries.
+- Main collections: `data.guys`, `data.girls`, `data.shadchanim`.
+- Preserve old records/unknown fields.
+- Prefer additive changes.
+- Use existing `save()`/load mechanisms.
+- Never fabricate history or dates.
+- Do not make destructive migrations casually.
 
 ## Product constraints
 
-- **FREE OPTIONS ONLY.** Do not propose paid APIs/services unless the user explicitly asks for them.
-- PWA/browser-first. NetSpark filtering is relevant on the user's devices.
-- The user is currently the only app user. Do not spend effort on team workflow, branch policy, permissions, or multi-user infrastructure unless asked.
-- The user does not want to chase singles. Follow-up/reminder features should be **Shadchan-only** unless explicitly requested otherwise.
-- Kosher/basic phones may have calls/SMS only; do not assume a browser exists on those devices.
-
-## Important Guy/Girl UI invariants
-
-Intended detail order is:
-1. header with name/photo/meta and Edit at top-right,
-2. profile text,
-3. **Looking for / To what age** when present,
-4. profile attachment,
-5. contacts,
-6. quick details / other profile information,
-7. history/notes,
-8. small `Added to PeerMatch: ...` line near the bottom.
-
-`profile-looking-for-v123.js` owns the two new optional fields:
-- `lookingFor`
-- `lookingForMaxAge`
-
-In Add/Edit, they appear immediately below Profile text. `Looking for` is multiline free text. `To what age` is optional and validates integer 18–99. Existing records without these fields remain valid.
-
-Do not move Edit below the profile. `edit-buttons-v77.js` is the established owner of top-right Edit placement, including the small `ב״ה` above it. Girl Photo belongs immediately left of Edit.
-
-Guy/Girl attachment placement is owned at creation time by `profile-pdf-ocr-v63.js`; Contacts placement is owned by `profile-contacts-v96.js`. Do not add a second observer just to move either one afterward.
-
-## Phone rules
-
-- Israeli numbers should be stored/displayed in local `0...` form when recognized.
-- WhatsApp uses international digits (`972...`) via the existing helpers.
-- Preserve +1/other international numbers rather than forcing them into Israeli format.
-- Call/SMS should use the locally appropriate stored/displayed number.
-- Existing helpers in `phone-links-v64.js` include `pmNormalizePhone`, `pmPhoneKey`, `pmPhoneType`, and `pmWhatsAppDigits`.
+- **FREE OPTIONS ONLY** unless explicitly asked otherwise.
+- Browser/PWA-first.
+- NetSpark filtering is relevant.
+- Current user is effectively the sole app user.
+- Reminders/follow-up are Shadchan-only unless explicitly requested otherwise.
+- Kosher/basic phones may only support Call/SMS.
 
 ## Selection source of truth
 
-Do not reconstruct selection from DOM card position/count.
+Never reconstruct selection from DOM position.
 
-`peermatch-v11.js` owns the real selection Sets and exposes them read-only through:
+Use:
 
-`window.pmGetSelected(k)`
+```js
+window.pmGetSelected('guys')
+window.pmGetSelected('girls')
+window.pmGetSelected('shadchanim')
+```
 
-Use that for `'guys'`, `'girls'`, and `'shadchanim'`.
+from `peermatch-v11.js`.
 
-The v115 debugging lesson remains important: a `window.addEventListener(..., true)` capture listener runs before listeners closer to the target. `profile-tools-v62.js` once intercepted every Guy/Girl WhatsApp click before the intended button handler. When auditing a click, check `window` capture listeners as well as `document` and direct `.onclick` handlers.
+## Guy/Girl detail order
 
-## Current WhatsApp behavior
+1. Header/name/photo/meta + Edit top-right
+2. Profile text
+3. Looking for / To what age, when present
+4. Attachment
+5. Contacts
+6. Quick details / other info
+7. History
+8. Added-to-PeerMatch date near bottom
 
-Android direct-send paths intentionally prefer `whatsapp://` so closing WhatsApp returns to PeerMatch instead of leaving the `api.whatsapp.com` / “Share on WhatsApp” browser screen underneath.
+`profile-looking-for-v123.js` owns:
 
-### Profile(s), no Shadchan selected
+- `lookingFor`
+- `lookingForMaxAge`
 
-Owned by `v120-general-whatsapp.js` after shared routing declines Case B.
+These fields are currently **not** automatically included in outgoing share text and are not part of ordinary list search. Ask before changing that product behavior.
 
-- User may choose an existing Shadchan, type a recipient, or leave phone blank.
-- With a phone, text opens directly to that number.
-- With no phone, WhatsApp opens and the user chooses/searches the recipient there.
-- Text is sent first.
-- If the profile has a stored photo, returning to PeerMatch shows `Send <Name>’s photo?` with **Yes / No**.
-- Profiles without a photo skip the second step.
-- Multiple profiles are handled separately, never merged.
+## Attachments / PDFs
 
-### Profile(s) + exactly one selected Shadchan
+`profile-pdf-ocr-v63.js` is the key attachment owner.
 
-Routing decision is shared through `window.pmRouteSelectedWhatsApp()` in `final-fixes-v107.js` and is called by both the Guy/Girl toolbar and Shadchanim toolbar.
+- Images can render in-app.
+- PDFs/non-image attachments download directly for opening.
+- PDF.js/Tesseract parsing may fail under NetSpark/offline and must never be required for attachment storage.
 
-- Text goes directly to the selected Shadchan first.
-- Share history is written on both profile and Shadchan sides.
-- If a photo exists, returning to PeerMatch shows **Yes / No** for photo-only sharing.
-- Multiple selected profiles are sent one at a time.
+Explicit outgoing rule: **if a Guy/Girl has an attached PDF, share the actual PDF rather than the OCR/autofilled text; if the PDF is removed, fall back to the normal text profile.**
 
-This direct selected-Shadchan flow was device-verified from v115 onward; the two-step text/photo flow was device-verified at v116.
+Current PDF-first code is in `v124-backup-pdf-share.js` plus later ownership/hardening in `v124-pdf-share-fix.js`.
 
-### One profile + multiple selected Shadchanim
+## Backup
 
-Owned by `v119-multi-shadchan.js`.
+`backup-v28.js` owns the real ZIP format.
 
-Sequence is Shadchan 1 text -> optional photo Yes/No -> Shadchan 2 text -> optional photo -> etc. History remains separate per recipient.
+- Save to phone/computer: real `PeerMatch_Backup_YYYY-MM-DD.zip`.
+- Email backup: `PeerMatch_Backup_YYYY-MM-DD.txt` containing Base64 of the exact ZIP bytes because Android Chrome rejected ZIP Web Share on the user's device.
+- The email `.txt` is **not encrypted**.
+- Restore accepts ZIP or the PeerMatch TXT wrapper.
+- v127 fixes Base64 chunk-boundary correctness for large backups.
 
-### Sharing selected Shadchan contact card(s)
+Do an end-to-end emailed-backup restore test after touching backup logic.
 
-Owned by `shadchan-share-v55.js` with Android direct-opening reinforcement in `v121-shadchan-whatsapp.js` so the old `api.whatsapp.com` screen is not left behind.
+## WhatsApp
 
-### Make Match -> WhatsApp
+Android direct text paths intentionally prefer `whatsapp://` so exiting WhatsApp returns to PeerMatch instead of an `api.whatsapp.com` intermediary.
 
-Owned by `make-match-v60-ui.js`. v122 changed Android WhatsApp handoff to `whatsapp://` and changed Make Match selection reading to authoritative `window.pmGetSelected(k)`.
+Current main owners:
 
-### Platform limitation
+- exactly one selected Shadchan + profile(s): `final-fixes-v107.js` / `window.pmRouteSelectedWhatsApp()`
+- one profile + multiple Shadchanim: `v119-multi-shadchan.js`
+- no preselected Shadchan: `v120-general-whatsapp.js`
+- Shadchan share/contact toolbar reinforcement: `v121-shadchan-whatsapp.js`
+- Make Match: `make-match-v60-ui.js`
+- PDF-first profile sharing: `v124-pdf-share-fix.js`
 
-A URL/deep link can preselect recipient + text but cannot reliably attach a local photo/PDF. `navigator.share({files})` can attach files but cannot reliably preselect the exact WhatsApp chat. PeerMatch therefore intentionally uses a two-step text-first, optional-photo-second flow where exact-recipient + media cannot be combined reliably.
+The v115 lesson: a `window.addEventListener(..., true)` capture listener can beat the visually obvious button handler. Inspect window/document capture handlers when debugging.
 
-## History deletion
+Some lower-level WhatsApp paths still have older `wa.me` behavior. Trace the exact button before modifying them. Queue consolidation is also still technical debt; see `CLAUDE_HANDOFF.md`.
 
-`history-delete-v30.js` owns individual deletion UI.
+## History
 
-WhatsApp profile-share history can exist on both the profile and Shadchan sides. v117 made linked deletion remove the mirrored pair so `dual-share-history-v100.js` does not recreate it. v122 tightened matching so unrelated records that happen to reuse the same timestamp-style activity ID are not accidentally removed. Prefer `shareLinkId` and explicit mirror fields over raw numeric ID equality across records.
+Important files:
 
-## Attachment/PDF behavior
+- `history-delete-v30.js`
+- `dual-share-history-v100.js`
 
-`profile-pdf-ocr-v63.js` is the single owner for Guy/Girl saved attachment opening and parsing.
+v127 hardening:
 
-- Images open in-app.
-- PDFs/non-image attachments download directly and synchronously; do not reintroduce raw `window.open(blobUrl)` behavior.
-- PDF.js/Tesseract are still used for local extraction/OCR when attaching files and can be blocked by NetSpark/offline conditions; attachment storage must not depend on parsing success.
-- The v113 PDF download path was device-verified by the user.
+- modern pairs use `shareLinkId`,
+- legacy pair deletion uses a profile/Shadchan/message/timestamp fingerprint,
+- deletion stores bounded tombstones in `pmDeletedShareHistoryV127`,
+- repeated identical modern shares with different links stay distinct,
+- the old permanent 4-second reconciliation interval is removed.
 
-Before touching attachments, search every LIVE file for `.pmV63Attachment`, `.pmAttachmentBox`, `profileAttachment`, `URL.createObjectURL`, and `window.open` to ensure a second owner has not been reintroduced.
+Do not revert to raw numeric activity-ID matching across records.
 
-## Current status / what still needs device confirmation
+## Stable user-facing preferences
 
-Most v115–v121 WhatsApp work was tested iteratively on the installed Android PWA and reported working.
+- Avoid X/cross symbols for choices; use explicit **Yes / No**.
+- Preferred contact action order when revising that UI: **Call → Email → WhatsApp → SMS**.
+- Waiting active yellow / inactive gray.
+- `ב״ה` above Edit.
+- Girl Photo immediately left of Edit.
+- Israeli phone display/call/SMS local when recognized; WhatsApp internationalized; preserve +1/other international numbers.
 
-The latest changes that should still be included in final regression testing are:
-- v122 Make Match Android direct-return behavior after leaving WhatsApp,
-- v122 cleanup/runtime deployment changes,
-- v123 `Looking for` / `To what age` Add, Edit, Cancel, save, layout, and old-record compatibility.
+## Device verification
 
-Do not call those specific latest behaviors device-verified until the user actually tests them.
+Previously device-verified:
 
-## Docs index
+- v110 layout baseline
+- v113 PDF direct download/opening behavior
+- v115 selected-Shadchan routing
+- v116 text-first + optional-photo direct flow
+- v123 Looking for / To what age Add/Edit/Cancel/persistence
+- v122 Make Match -> WhatsApp return behavior later reported working
 
-- `docs/ARCHITECTURE.md` — persistence, service worker, script loading, share target, attachments, PDF/OCR, runtime architecture.
-- `docs/DECISIONS.md` — tested approaches and why choices were made.
-- `docs/KNOWN_ISSUES.md` — current/resolved bug status and architectural risks.
-- `docs/TESTING.md` — current manual regression checklist.
+Fresh regression still required after v127:
+
+- save ZIP backup,
+- email TXT backup is actually attached,
+- download emailed TXT and restore it,
+- verify photos/PDF/audio/history survive,
+- fresh and old history deletion do not reappear,
+- same unchanged profile sent twice to same Shadchan remains two separate history entries,
+- PDF-first share then PDF removal -> text fallback.
 
 ## Working style
 
-- Inspect `sw.js` load order first.
-- Search all LIVE scripts for a selector/function/event before adding another handler.
-- Pay attention to capture listeners, `stopImmediatePropagation()`, global wrappers, and MutationObservers.
-- Prefer consolidating ownership over adding another patch file.
-- Keep changes narrow when debugging.
-- Do not redesign unrelated UI while fixing a bug.
-- Preserve existing working behavior.
-- When uncertain whether a behavior is intentional, consult `docs/DECISIONS.md` and `docs/KNOWN_ISSUES.md` before changing it.
+- Read `CLAUDE_HANDOFF.md` first.
+- Inspect `sw.js` before coding.
+- Search all live owners for the behavior.
+- Prefer changing the owner to adding a new monkey patch.
+- Keep fixes narrow.
+- Preserve working behavior.
+- Review actual diffs, not commit messages only.
+- Do not call a new behavior device-verified until the user tests it.
