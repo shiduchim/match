@@ -1,29 +1,27 @@
 # PeerMatch — Claude Code Project Brief
 
-Start with **`CLAUDE_HANDOFF.md`**. It contains the detailed current handoff, recent bug history, device-verification status, and safe development procedure.
+Start with **`CLAUDE_HANDOFF_V128.md`**. It is the detailed current handoff and should be treated as the primary takeover document.
 
 PeerMatch is a browser/PWA shidduch relationship tracker. It tracks Guys, Girls, Shadchanim, profiles, contacts, referrals, history, reminders, attachments, sharing, Make Match, and backup/restore.
 
 ## Live runtime source of truth
 
-`index.html` is mostly the shell. **`sw.js -> SCRIPTS` is the authoritative ordered live runtime list.**
+`index.html` is mostly the shell. **`sw.js -> SCRIPTS` is the authoritative ordered live runtime list.** A root JS file that is not in `SCRIPTS` is historical/dead unless another live file explicitly imports it.
 
-A root JS file that is not in `SCRIPTS` is historical/dead unless another live file explicitly imports it.
-
-Load order matters. The codebase has many wrappers around `openP`, `openS`, `renderP`, `renderS`, direct `.onclick` replacements, capture listeners, and MutationObservers. Before adding an override, identify the current owner and all competing live handlers.
+Load order matters. The codebase has wrappers around `openP`, `openS`, `renderP`, `renderS`, direct `.onclick` replacements, capture listeners, and MutationObservers. Before adding an override, identify the current owner and all competing live handlers.
 
 ## Current version
 
-Current intended PWA/service-worker version: **v127**.
+Current intended PWA/service-worker version: **v128**.
 
 For runtime changes:
 
-1. fetch current `main` and current file SHA,
-2. inspect `sw.js`,
-3. edit the true live owner,
-4. bump `VERSION` in `sw.js`,
-5. keep `SCRIPTS` ordering intentional,
-6. verify GitHub Pages deployment,
+1. fetch current `main` and current file SHA;
+2. inspect `sw.js`;
+3. edit the true live owner;
+4. bump `VERSION` in `sw.js`;
+5. keep `SCRIPTS` ordering intentional;
+6. verify GitHub Pages deployment;
 7. tell the user to fully close/reopen the installed PWA.
 
 Docs-only changes do not require a version bump.
@@ -49,9 +47,7 @@ Docs-only changes do not require a version bump.
 
 ## Selection source of truth
 
-Never reconstruct selection from DOM position.
-
-Use:
+Never reconstruct selection from DOM position. Use:
 
 ```js
 window.pmGetSelected('guys')
@@ -72,12 +68,7 @@ from `peermatch-v11.js`.
 7. History
 8. Added-to-PeerMatch date near bottom
 
-`profile-looking-for-v123.js` owns:
-
-- `lookingFor`
-- `lookingForMaxAge`
-
-These fields are currently **not** automatically included in outgoing share text and are not part of ordinary list search. Ask before changing that product behavior.
+`profile-looking-for-v123.js` owns `lookingFor` and `lookingForMaxAge`. These fields are currently not automatically included in outgoing share text and are not part of ordinary list search. Ask before changing that behavior.
 
 ## Attachments / PDFs
 
@@ -87,9 +78,11 @@ These fields are currently **not** automatically included in outgoing share text
 - PDFs/non-image attachments download directly for opening.
 - PDF.js/Tesseract parsing may fail under NetSpark/offline and must never be required for attachment storage.
 
-Explicit outgoing rule: **if a Guy/Girl has an attached PDF, share the actual PDF rather than the OCR/autofilled text; if the PDF is removed, fall back to the normal text profile.**
+Outgoing rule: **if a Guy/Girl has an attached PDF, share the actual PDF rather than OCR/autofilled text; if the PDF is removed, fall back to normal text.**
 
-Current PDF-first code is in `v124-backup-pdf-share.js` plus later ownership/hardening in `v124-pdf-share-fix.js`.
+Final PDF-sharing owner: `v124-pdf-share-fix.js`.
+
+At v128, `v124-backup-pdf-share.js` is intentionally only a backup-screen UI shim. Do not restore old PDF or email-sharing ownership to it.
 
 ## Backup
 
@@ -99,7 +92,8 @@ Current PDF-first code is in `v124-backup-pdf-share.js` plus later ownership/har
 - Email backup: `PeerMatch_Backup_YYYY-MM-DD.txt` containing Base64 of the exact ZIP bytes because Android Chrome rejected ZIP Web Share on the user's device.
 - The email `.txt` is **not encrypted**.
 - Restore accepts ZIP or the PeerMatch TXT wrapper.
-- v127 fixes Base64 chunk-boundary correctness for large backups.
+- v127 fixed Base64 chunk-boundary correctness for large backups.
+- Email-backup owner: `v125-email-backup-direct.js`.
 
 Do an end-to-end emailed-backup restore test after touching backup logic.
 
@@ -109,16 +103,24 @@ Android direct text paths intentionally prefer `whatsapp://` so exiting WhatsApp
 
 Current main owners:
 
-- exactly one selected Shadchan + profile(s): `final-fixes-v107.js` / `window.pmRouteSelectedWhatsApp()`
-- one profile + multiple Shadchanim: `v119-multi-shadchan.js`
-- no preselected Shadchan: `v120-general-whatsapp.js`
-- Shadchan share/contact toolbar reinforcement: `v121-shadchan-whatsapp.js`
-- Make Match: `make-match-v60-ui.js`
-- PDF-first profile sharing: `v124-pdf-share-fix.js`
+- exactly one selected Shadchan + profile(s): `final-fixes-v107.js` / `window.pmRouteSelectedWhatsApp()`;
+- one profile + multiple Shadchanim: `v119-multi-shadchan.js`;
+- no preselected Shadchan: `v120-general-whatsapp.js`;
+- Shadchan share/contact toolbar: `v121-shadchan-whatsapp.js`;
+- Make Match: `make-match-v60-ui.js`;
+- PDF-first profile sharing: `v124-pdf-share-fix.js`.
 
-The v115 lesson: a `window.addEventListener(..., true)` capture listener can beat the visually obvious button handler. Inspect window/document capture handlers when debugging.
+The v115 lesson: a capture-phase listener can beat the visually obvious button handler. Inspect window/document capture handlers when debugging.
 
-Some lower-level WhatsApp paths still have older `wa.me` behavior. Trace the exact button before modifying them. Queue consolidation is also still technical debt; see `CLAUDE_HANDOFF.md`.
+### v128 queue isolation
+
+Four legacy queue keys remain: `pmWaSendQueue`, `pmMultiShadWaQueue`, `pmGeneralWaQueueV120`, and `pmV124PdfSendQueue`.
+
+`v128-runtime-hardening.js`, loaded last, temporarily guarantees only one can exist at a time and clears stale old queue state once. It intercepts `Storage.prototype.setItem` only for those exact keys. This is a bridge, not the desired long-term architecture. Future cleanup should consolidate the four owners and remove this hardener rather than adding a fifth queue.
+
+### Known lower-level inconsistency
+
+These paths can still use older `wa.me` behavior: ordinary Shadchan-detail compose, sender/contact compose, Guy/Girl Contacts WhatsApp, and inline-phone WhatsApp. Trace and fix the actual owner; do not add a broad capture listener.
 
 ## History
 
@@ -127,20 +129,21 @@ Important files:
 - `history-delete-v30.js`
 - `dual-share-history-v100.js`
 
-v127 hardening:
+v127 hardening that must be preserved:
 
-- modern pairs use `shareLinkId`,
-- legacy pair deletion uses a profile/Shadchan/message/timestamp fingerprint,
-- deletion stores bounded tombstones in `pmDeletedShareHistoryV127`,
-- repeated identical modern shares with different links stay distinct,
-- the old permanent 4-second reconciliation interval is removed.
+- modern pairs use `shareLinkId`;
+- legacy pair deletion uses profile/Shadchan/message/timestamp fingerprint;
+- deletion stores bounded tombstones in `pmDeletedShareHistoryV127`;
+- repeated identical modern shares with different links stay distinct;
+- no permanent 4-second reconciliation interval;
+- failed deletion saves roll in-memory activity state back.
 
 Do not revert to raw numeric activity-ID matching across records.
 
 ## Stable user-facing preferences
 
 - Avoid X/cross symbols for choices; use explicit **Yes / No**.
-- Preferred contact action order when revising that UI: **Call → Email → WhatsApp → SMS**.
+- Contact action order: **Call -> Email -> WhatsApp -> SMS**.
 - Waiting active yellow / inactive gray.
 - `ב״ה` above Edit.
 - Girl Photo immediately left of Edit.
@@ -151,29 +154,30 @@ Do not revert to raw numeric activity-ID matching across records.
 Previously device-verified:
 
 - v110 layout baseline
-- v113 PDF direct download/opening behavior
+- v113 PDF direct download/opening
 - v115 selected-Shadchan routing
 - v116 text-first + optional-photo direct flow
 - v123 Looking for / To what age Add/Edit/Cancel/persistence
 - v122 Make Match -> WhatsApp return behavior later reported working
 
-Fresh regression still required after v127:
+Fresh regression required after v127/v128:
 
-- save ZIP backup,
-- email TXT backup is actually attached,
-- download emailed TXT and restore it,
-- verify photos/PDF/audio/history survive,
-- fresh and old history deletion do not reappear,
-- same unchanged profile sent twice to same Shadchan remains two separate history entries,
-- PDF-first share then PDF removal -> text fallback.
+- save ZIP backup;
+- email TXT backup is actually attached;
+- download emailed TXT and restore it completely;
+- fresh and old history deletion do not reappear;
+- same unchanged profile sent twice to same Shadchan remains two pairs;
+- PDF-first share then PDF removal -> text fallback;
+- v128 queue isolation;
+- v128 contact order;
+- no regression from removing obsolete v124 handler ownership.
 
 ## Working style
 
-- Read `CLAUDE_HANDOFF.md` first.
+- Read `CLAUDE_HANDOFF_V128.md` first.
 - Inspect `sw.js` before coding.
 - Search all live owners for the behavior.
-- Prefer changing the owner to adding a new monkey patch.
-- Keep fixes narrow.
-- Preserve working behavior.
+- Prefer changing/consolidating the owner to adding another monkey patch.
+- Keep fixes narrow and preserve working behavior.
 - Review actual diffs, not commit messages only.
 - Do not call a new behavior device-verified until the user tests it.
