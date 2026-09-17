@@ -1,270 +1,236 @@
 # PeerMatch Manual Regression Checklist
 
-PeerMatch has no comprehensive automated regression suite. Because many live scripts monkey-patch the same UI/functions, a runtime fix is not complete until the installed PWA is manually checked.
-
-Use this checklist selectively for small changes and more fully for layout/share/runtime changes.
+PeerMatch has no comprehensive automated regression suite. Because many live scripts wrap the same functions/buttons, runtime work is not complete until the installed PWA is tested.
 
 ## Before testing
 
 - Confirm `sw.js` `VERSION` was bumped for runtime changes.
-- Confirm any new runtime file is intentionally present in `sw.js` `SCRIPTS`.
+- Confirm all intended live files are in `sw.js -> SCRIPTS`.
 - Confirm dead/historical files were not edited expecting live behavior to change.
-- Fully close PeerMatch on Android, reopen it, and confirm the new service worker/version loads.
-- Test the installed PWA, not only desktop browser preview.
+- Fully close the installed PWA and reopen it.
+- Test the installed Android PWA, not only desktop preview.
 
-## Smoke test
+## Smoke
 
-- App opens without error.
-- Guys, Girls, and Shadchanim lists render.
-- Existing records remain present.
-- Search still filters correctly.
-- Checkboxes still work.
-- Detail screens open/close normally.
-- Add/Edit forms can save.
-- No obvious duplicate blocks appear after opening the same profile repeatedly.
+- App opens without errors.
+- Guys/Girls/Shadchanim render.
+- Existing records are present.
+- Search/checkbox selection still works.
+- Details open/close normally.
+- Add/Edit saves.
+- No duplicated detail blocks after repeated opens.
 
 ## Guy/Girl detail order
 
-For both one Guy and one Girl, verify:
+For both a Guy and Girl:
 
-1. header / photo / meta / Edit at top-right,
-2. profile text,
-3. Looking for / To what age when present,
-4. saved attachment,
-5. contacts,
-6. quick details / other information,
-7. history/notes,
-8. Added to PeerMatch low on the page.
+1. Header/photo/meta + Edit top-right
+2. Profile text
+3. Looking for / To what age, when present
+4. Attachment
+5. Contacts
+6. Quick details / other info
+7. History
+8. Added date near bottom
 
-Also verify:
-- `ב״ה` remains in its established header/Edit area,
-- Girl Photo remains immediately left of Edit,
-- scrolling or waiting a moment does not cause an observer to move sections,
-- reopening the same detail twice does not duplicate any block.
+Also verify `ב״ה` and Girl Photo placement remain correct.
 
-## v123 — Looking for / To what age
+## Looking for / To what age — v123
 
-Test Add Guy, Add Girl, Edit Guy, and Edit Girl.
+Already user-verified, but keep as regression coverage:
 
-- `Looking for` appears directly under Profile text and is multiline free text.
-- `To what age` appears beside it and is optional.
-- blank values save normally.
-- 18 and 99 are accepted.
-- invalid values below 18, above 99, or non-integer are blocked.
-- existing values prefill on Edit.
-- changing values then Save persists them.
-- clearing an existing value then Save persists the clear.
-- changing values then Cancel leaves the saved record unchanged.
-- existing older profiles with neither field still open and save normally.
-- after Save, detail shows the block below Profile and before Attachment.
-- repeated open/edit/save cycles do not create duplicate form/detail blocks.
+- Add/edit/save works.
+- Cancel does not persist changes.
+- Clear + Save persists clear.
+- Blank values are allowed.
+- 18–99 integer validation works.
+- Old records without fields still work.
+- Repeated edit/open does not duplicate blocks.
 
-## Attachment — image
+## Attachment opening
 
-- Existing image remains saved after restart.
-- Open attachment displays image in-app.
-- No broken new browser tab opens.
-- Close viewer works.
-- Detail order remains correct afterward.
+### Image
 
-## Attachment — PDF
+- Existing image remains after restart.
+- Opens in-app.
+- Close works.
 
-The v113 direct-download path was device-verified; keep it as a regression test.
+### PDF
 
-- PDF remains attached after save/restart.
-- Open PDF does not navigate to `blob://localhost/...`.
-- It downloads directly rather than opening a broken browser tab.
-- Alert explains that the PDF was downloaded.
-- File appears in Android Downloads with a sensible name and opens normally.
-- Reopening the profile and downloading again still works.
-- Image attachment behavior remains unaffected.
+- Existing PDF remains attached.
+- Open PDF downloads directly, not via broken `blob://` tab.
+- Downloaded filename is sensible.
+- Reopen/download again still works.
 
-## Add/Edit attachment form
+## PDF-first outgoing profile rule — v124+
 
-- Attach PDF/screenshot opens file picker.
-- Remove works.
-- File name/status displays.
-- Parsing/OCR fills only empty fields.
-- Existing typed fields are not overwritten.
-- Save keeps attachment even if OCR/parser fails.
+Explicit product requirement:
 
-## Contacts and phone normalization
+1. Choose profile with attached PDF.
+2. Share by WhatsApp.
+3. Confirm actual PDF file is shared; OCR/autofilled profile text is not substituted for it.
+4. Repeat by Email.
+5. Remove PDF attachment from profile and Save.
+6. Share again.
+7. Confirm normal text-profile sharing is used after PDF removal.
 
-For Guy/Girl:
-- Profile phone persists.
-- Contact 1 and Contact 2 names/phones persist.
-- Legacy sender/source synchronization still works.
-- Contacts appear below Attachment.
-- Contact actions target the correct number.
+Also test one profile -> multiple Shadchanim if PDF is present.
 
-Phone cases:
-- `+972 50...` -> local `050...` display/storage where recognized.
-- `00972...` -> local form.
-- local `05x...` remains local.
-- WhatsApp converts Israeli local mobile to `972...`.
+## Contacts / phones
+
+- Profile/Contact 1/Contact 2 persist.
+- Correct number is targeted by Call/SMS/WhatsApp.
+- Israeli `+972` / `00972` normalize appropriately.
+- local Israeli mobile remains local for display/call/SMS.
+- WhatsApp converts local Israeli mobile to `972...`.
 - +1/other international numbers are preserved.
 
-## Core selection persistence
+## Selection source of truth
 
-- Check one Guy; switch tabs; check one Shadchan; both stay selected.
-- Repeat with Girl.
-- Search/filtering does not remap selection to another record.
-- Grouped/collapsed Shadchan cards preserve the real selected record.
-- Any sharing code uses `window.pmGetSelected(k)`, not DOM card position.
+- Select Guy/Girl and Shadchan across tabs; selection persists.
+- Search/reorder/grouping never remaps selection to another record.
+- Sharing uses `window.pmGetSelected(k)`.
 
-## WhatsApp — profile(s) + one selected Shadchan
+## WhatsApp — one selected Shadchan + profile(s)
 
-This flow was device-verified from v115/v116; keep as regression test.
+Device-verified baseline from v115/v116; regression-test:
 
-- Select exactly one Guy or Girl + exactly one Shadchan.
-- Press WhatsApp from the Guy/Girl toolbar: exact selected Shadchan opens with profile text.
-- Repeat from the Shadchanim toolbar: behavior is identical.
-- Returning from WhatsApp reveals PeerMatch, not `api.whatsapp.com` / “Share on WhatsApp”.
-- If profile has photo, PeerMatch asks `Send <Name>’s photo?` with **Yes / No**.
-- Yes shares photo only; No skips it.
-- No-photo profile does not show the photo question.
-- Profile history and Shadchan history each get the correct paired entry.
+- Correct selected Shadchan opens.
+- Android returns to PeerMatch, not `api.whatsapp.com`.
+- Text goes first.
+- Photo prompt is explicit **Yes / No** only when photo exists.
+- Multiple profiles send separately.
+- Profile and Shadchan history each get one linked entry per send.
 
-For multiple profiles + one Shadchan:
-- profiles send one at a time,
-- no merged profile message,
-- each profile gets its own optional photo step,
-- queue survives returning from WhatsApp,
-- Cancel clears remaining queue.
+## WhatsApp — no Shadchan selected
 
-## WhatsApp — profile(s), no Shadchan selected
+Owner: `v120-general-whatsapp.js`.
 
-Current owner is `v120-general-whatsapp.js`.
+- Existing Shadchan can be selected, recipient can be typed, or phone left blank.
+- Correct recipient opens when number supplied.
+- Blank phone opens WhatsApp for manual recipient choice.
+- Text first, optional photo second.
+- Multiple profiles remain separate.
 
-- Recipient dialog appears.
-- Existing Shadchan can be chosen.
-- Name/phone can be typed.
-- Phone may be left blank; WhatsApp opens for manual recipient choice.
-- With a phone, exact recipient opens directly.
-- Returning from WhatsApp reveals PeerMatch, not the browser intermediary.
-- Text is first; optional photo Yes/No follows only if a photo exists.
-- Multiple profiles are sent separately.
+## WhatsApp — one profile -> multiple Shadchanim
 
-## WhatsApp — one profile + multiple Shadchanim
+Owner: `v119-multi-shadchan.js`.
 
-Current owner is `v119-multi-shadchan.js`.
+- One profile + 2+ Shadchanim.
+- Each Shadchan receives a separate send sequence.
+- Optional photo is Yes/No per recipient.
+- History stays separate per recipient.
 
-- Select one profile and two or more Shadchanim.
-- Shadchan 1 gets text first.
-- Return -> optional photo Yes/No.
-- Then Shadchan 2 text -> optional photo, etc.
-- Profiles without photos skip photo step.
-- History remains separate for each recipient.
-- Returning from WhatsApp does not expose `api.whatsapp.com`.
+## Shadchan share/contact + Make Match
 
-## WhatsApp — Shadchan contact/profile sharing
+- Shadchan share toolbar opens direct Android WhatsApp as intended.
+- Make Match uses actual selected Guy/Girl/Shadchan.
+- Exiting WhatsApp returns to PeerMatch, not browser intermediary.
+- Match history lands on correct records.
 
-- Select one Shadchan with no Guy/Girl selected.
-- Share Shadchan contact/profile via WhatsApp.
-- Android opens WhatsApp directly.
-- Exiting WhatsApp reveals PeerMatch, not the blue `Share on WhatsApp` browser page.
-- Multiple Shadchan contact cards still use the intended separate-share behavior.
+The user later reported the v122 Make Match return behavior working; keep it as regression coverage rather than an unverified item.
 
-## Make Match -> WhatsApp — v122 final device check
+## Ordinary lower-level WhatsApp paths
 
-This is the newest Android deep-link change that still needs explicit final device confirmation.
+These are separate from the main selection-bar flows and should be tested independently:
 
-- Select exactly one Guy and one Girl; optionally one Shadchan.
-- Open Make Match.
-- Recipient selector matches the real selected records.
-- WhatsApp opens the intended recipient with the message.
-- Exit WhatsApp.
-- PeerMatch should be underneath; `api.whatsapp.com` / “Share on WhatsApp” must not appear.
-- Match history is written to the correct Guy/Girl/Shadchan records.
-- SMS/Email/Contact actions remain unchanged.
+- Shadchan detail -> WhatsApp compose
+- Guy/Girl Contacts -> WhatsApp
+- inline clickable phone -> WhatsApp
 
-## Ordinary Shadchan detail WhatsApp
+If one shows the browser `Share on WhatsApp` intermediary, trace that exact handler; do not assume the main toolbar owner controls it.
 
-- Open a Shadchan detail.
-- Tap WhatsApp, type message, Continue.
-- Correct Shadchan number opens.
-- Message is recorded once.
-- Returning to PeerMatch behaves normally.
+## History deletion — v127
 
-## Guy/Girl contact-person WhatsApp
+Test **fresh modern shares** and **old/pre-link history**.
 
-- Open a Guy/Girl profile with a contact person.
-- Tap the contact-person WhatsApp action.
-- Correct phone opens.
-- No unwanted browser intermediary remains after exiting WhatsApp.
+### Fresh modern share
 
-## History deletion — v117/v122
+1. Send one profile to one Shadchan.
+2. Verify profile + Shadchan history each contain the event.
+3. Delete from one side.
+4. Verify both linked sides disappear.
+5. Wait 5+ seconds.
+6. Switch away/back to app.
+7. Open both details again.
+8. Confirm deleted event does not return.
 
-Test both new and older share history.
+### Old/pre-link share
 
-- Delete a normal unrelated history entry: only that entry disappears.
-- Delete a mirrored profile<->Shadchan WhatsApp share: both true linked copies disappear.
-- Wait/reopen app: deleted mirrored share does not reappear via `dual-share-history-v100.js`.
-- If two unrelated records happen to contain the same numeric/timestamp-style activity ID, deleting one must not delete the other.
-- Older mirror records using `mirroredFromProfileActivityId` / `mirroredFromShadchanActivityId` still delete as a pair.
+Repeat deletion on an older share without modern `shareLinkId`, if available. Confirm it does not return after focus/detail reopen.
+
+### Repeated identical send
+
+1. Send the same unchanged profile to the same Shadchan twice.
+2. Confirm two separate profile-side entries.
+3. Confirm two separate Shadchan-side entries.
+4. Delete only one pair.
+5. Confirm the other pair remains.
+
+### Collision protection
+
+Unrelated records that happen to reuse the same numeric activity ID must not be deleted together.
+
+## Backup — save to phone/computer
+
+- Tap Save backup to phone/computer.
+- Real `PeerMatch_Backup_YYYY-MM-DD.zip` is produced.
+- Keep this ZIP as the safest manual backup copy before destructive tests.
+
+## Backup — Email backup v127
+
+This is a high-priority device test.
+
+1. Open Backup screen and wait for preparation to finish.
+2. Tap Email backup.
+3. Choose Gmail/email app.
+4. Confirm there is an actual attached file named like `PeerMatch_Backup_YYYY-MM-DD.txt`.
+5. Send it to yourself.
+6. Download the attachment back to the phone/computer.
+7. Open Restore Backup and choose the downloaded `.txt`.
+8. Confirm PeerMatch recognizes it as an emailed backup.
+9. Restore only when a safe secondary backup exists.
+10. Verify Guys, Girls, Shadchanim, history, photos, PDFs and audio survive.
+
+The `.txt` is Base64 of the exact ZIP bytes; it is not encryption.
+
+## Backup roundtrip integrity — v127 bug regression
+
+v126 originally encoded independent Base64 chunks using a chunk size not divisible by 3, which could insert `=` padding in the middle of large backups. v127 changes the encoder chunk size to a multiple of 3.
+
+For a meaningful test, use a backup containing at least one photo or PDF so the file is large enough to cross multiple encoding chunks.
 
 ## Incoming Android Share -> PeerMatch
 
-- Share plain profile text to PeerMatch.
-- Share image to PeerMatch.
-- Share PDF to PeerMatch.
-- Pending item is consumed only once.
-- Import does not duplicate on reopen.
-- Text/file are not lost if parsing fails.
+- Share text, image and PDF into PeerMatch.
+- Pending import is consumed once.
+- No duplicate on reopen.
+- File survives even if parsing/OCR fails.
 
-## Shadchan detail / reminders
+## Shadchan reminders / waiting / added date
 
-- Edit works.
-- Phone/contact actions target correct record.
-- Referral/group information renders.
-- Shadchan attachment opens correctly.
-- Call today / Call tomorrow / Clear reminder remain Shadchan-only.
-- Added date remains low on detail page.
+- Reminder controls remain Shadchan-only.
+- Waiting active yellow / inactive gray.
+- Editing does not reset waiting unexpectedly.
+- Added date does not change on edit.
 
-## Waiting status
+## GitHub Pages / service worker
 
-- Waiting control remains near intended actions.
-- active state is yellow/distinct.
-- inactive state is gray/neutral.
-- opening/editing profile does not reset it unexpectedly.
-
-## Added date
-
-New records:
-- date matches creation time reasonably,
-- editing later does not change it.
-
-Older records:
-- recoverable timestamp from ID is plausible,
-- unrecoverable old record is not falsely labeled as added today,
-- date remains low on detail page.
-
-## GitHub Pages / service worker — v122 regression test
-
-- GitHub Pages deploy succeeds.
-- Deploy workflow reads VERSION/SCRIPTS from `sw.js`.
+- Deploy succeeds.
+- Workflow reads VERSION/SCRIPTS from `sw.js`.
 - Every live runtime file exists.
-- App shell loads after deployment.
-- Installed PWA updates after full close/reopen.
-- Old `peermatch-v*` caches are removed.
-- Unrelated origin caches are not removed.
-- Offline shell still opens where expected.
+- Full PWA close/reopen activates the new version.
+- Only old `peermatch-v*` caches are removed.
 - Existing IndexedDB data remains readable.
 
-## Backup / restore
+## Final completion statement
 
-Before any persistence migration or broad refactor:
-- create/export a backup,
-- verify a backup file is produced,
-- do not test destructive restore on the only valuable dataset without a safe copy.
+Before calling work finished, state:
 
-## Final check before declaring a change finished
-
-State exactly:
 - which live owner changed,
-- which conflicting old behavior was removed/disabled,
-- which device/browser was tested,
-- whether installed-PWA testing passed,
+- which conflicting/legacy behavior was removed or constrained,
+- deployment status,
+- exact installed-PWA tests performed,
 - what remains untested.
 
-Do not say a runtime behavior is device-verified merely because CI/deployment passed or the code path looks correct.
+CI success is not device verification.
