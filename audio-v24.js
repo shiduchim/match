@@ -225,6 +225,12 @@
   window.acts=acts=function(x){
     if(!x.activities?.length)return'<div class="empty">No contact history yet.</div>';
     return [...x.activities].reverse().map(a=>{
+      if(a.type==='call-note'){
+        const parts=[];
+        if(a.text)parts.push(`<div class="profileText">${esc(a.text)}</div>`);
+        if(a.audio)parts.push(`<audio controls src="${url(a.audio)}"></audio>`);
+        return `<div class="event"><div class="eventTop"><span>Call status update${a.phone?' • '+esc(a.phone):''}</span><span>${esc(a.ts||'')}</span></div>${parts.join('')||'<div class="small">No details recorded.</div>'}</div>`;
+      }
       if(a.type==='audio'){
         return `<div class="event"><div class="eventTop"><span>Audio note</span><span>${esc(a.ts||'')}</span></div>${a.audio?`<audio controls src="${url(a.audio)}"></audio>`:'<div class="small">Audio unavailable.</div>'}</div>`;
       }

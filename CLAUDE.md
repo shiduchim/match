@@ -12,7 +12,7 @@ Load order matters. The codebase has wrappers around `openP`, `openS`, `renderP`
 
 ## Current version
 
-Current intended PWA/service-worker version: **v128**.
+Current intended PWA/service-worker version: **v129**.
 
 For runtime changes:
 
@@ -122,6 +122,24 @@ Four legacy queue keys remain: `pmWaSendQueue`, `pmMultiShadWaQueue`, `pmGeneral
 
 These paths can still use older `wa.me` behavior: ordinary Shadchan-detail compose, sender/contact compose, Guy/Girl Contacts WhatsApp, and inline-phone WhatsApp. Trace and fix the actual owner; do not add a broad capture listener.
 
+## Call status updates
+
+`v129-call-followup.js` adds a post-call status-update popup (typed note and/or a recorded
+audio note) for Guys, Girls, and Shadchanim.
+
+- It never intercepts or replaces a Call/`tel:` handler. It only watches, passively (no
+  `preventDefault`/`stopPropagation`), for a click on a button whose exact text is `Call`,
+  then watches `visibilitychange` for the app regaining focus (the OS dialer closing).
+- It records which profile/Shadchan was open via its own `openP`/`openS` wrapper, the same
+  pattern other files use.
+- Saved notes are stored as a new activity type, `call-note` (`text` and/or `audio` Blob),
+  rendered by `acts()` in `audio-v24.js` (the current live owner of activity rendering).
+- Pending call state is kept in memory and in `localStorage['pmCallFollowupV129']` (survives
+  an Android WebView reload while the dialer was open); it is unrelated to the four legacy
+  WhatsApp queue keys and is not touched by `v128-runtime-hardening.js`.
+- Make Match's own "Contact" call button (`make-match-v60-ui.js`) is not covered yet — its
+  button is labeled "Contact", not "Call".
+
 ## History
 
 Important files:
@@ -170,7 +188,10 @@ Fresh regression required after v127/v128:
 - PDF-first share then PDF removal -> text fallback;
 - v128 queue isolation;
 - v128 contact order;
-- no regression from removing obsolete v124 handler ownership.
+- no regression from removing obsolete v124 handler ownership;
+- v129 call status-update popup: appears after Call -> hang up -> return to PeerMatch, for
+  Guy/Girl Contacts calls, Shadchan detail calls, and the inline phone-number picker; typed
+  note and recorded audio note both save and display correctly in History.
 
 ## Working style
 
