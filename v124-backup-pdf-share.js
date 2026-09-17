@@ -187,14 +187,14 @@
         if(can){
           try{
             await navigator.share({title:'PeerMatch Backup',text:'PeerMatch backup file',files:[file]});
-            progress.textContent='Backup handed to your email/share app.';
+            if(progress)progress.textContent='Backup handed to your email/share app.';
             preparedBackup=null;email.textContent='Email backup';
             return;
           }catch(e){if(e?.name==='AbortError')return;console.warn('PeerMatch v124 email backup share',e);}
         }
         downloadFile(file);
         location.href='mailto:?subject='+encodeURIComponent('PeerMatch Backup')+'&body='+encodeURIComponent('PeerMatch downloaded the backup ZIP. Please attach '+file.name+' to this email before sending.');
-        progress.textContent='Backup downloaded. Attach the ZIP to the email that opened.';
+        if(progress)progress.textContent='Backup downloaded. Attach the ZIP to the email that opened.';
         preparedBackup=null;email.textContent='Email backup';
         return;
       }
