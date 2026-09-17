@@ -8,7 +8,6 @@
 (function(){
   document.documentElement.dataset.peerMatchVersion='127';
   const TOMBSTONE_KEY='pmDeletedShareHistoryV127';
-  const MAX_TOMBSTONES=500;
 
   const norm=s=>String(s||'').trim().toLocaleLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
   function phoneKey(p){
@@ -44,7 +43,7 @@
   }
   function deleted(kind,record,a,tombs){
     const link=String(a?.shareLinkId||'');
-    if(link&&tombs.has('link:'+link))return true;
+    if(link)return tombs.has('link:'+link); // linked modern shares are identified only by their unique link.
     const lk=legacyKey(kind,record,a);
     return !!lk&&tombs.has(lk);
   }
@@ -85,7 +84,7 @@
     return (profile.activities||[]).some(a=>{
       if(link&&String(a.shareLinkId||'')===link)return true;
       if(sourceId!=null&&String(a.mirroredFromShadchanActivityId||'')===String(sourceId))return true;
-      if(link)return false; // a modern unique shareLinkId must not be deduped by same text.
+      if(link)return false;
       if(!isProfileWhatsApp(a)||!sameMessage(a,text))return false;
       const ap=phoneKey(a.recipientPhone),an=norm(a.recipient);
       return (sp&&ap===sp)||(sn&&an===sn)||String(a.recipientShadchanId||a.shadchanId||'')===String(shad?.id||'');
