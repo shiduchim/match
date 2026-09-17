@@ -82,7 +82,7 @@
     const link=String(target?.shareLinkId||''),targetId=idKey(target?.id);
     const sourceProfileId=idKey(target?.mirroredFromProfileActivityId),sourceShadId=idKey(target?.mirroredFromShadchanActivityId);
     const legacy=legacyKey(recordKind,selectedRecord,target);
-    const tombs=[];if(link)tombs.push('link:'+link);if(legacy)tombs.push(legacy);
+    const tombs=[];if(link)tombs.push('link:'+link);else if(legacy)tombs.push(legacy);
     let removed=0;
 
     for(const k of ['shadchanim','guys','girls']){
@@ -93,7 +93,7 @@
           const a=record.activities[i],aId=idKey(a?.id),fromProfile=idKey(a?.mirroredFromProfileActivityId),fromShad=idKey(a?.mirroredFromShadchanActivityId);
           const sameSelected=selected&&(a===target||(targetId&&aId===targetId));
           const sameLink=!!link&&String(a?.shareLinkId||'')===link;
-          const sameLegacy=!!legacy&&legacyKey(k,record,a)===legacy;
+          const sameLegacy=!link&&!!legacy&&legacyKey(k,record,a)===legacy;
           const sourceOfSelected=(!!sourceProfileId&&k!=='shadchanim'&&aId===sourceProfileId)||(!!sourceShadId&&k==='shadchanim'&&aId===sourceShadId);
           const mirrorsSelected=!!targetId&&(fromProfile===targetId||fromShad===targetId);
           if(sameSelected||sameLink||sameLegacy||sourceOfSelected||mirrorsSelected){record.activities.splice(i,1);removed++;}
@@ -110,13 +110,19 @@
     const a=x.activities[index],label=eventTitle(a);
     if(!confirm('Delete this history entry?\n\n'+label+'\n'+String(a.ts||'')))return;
 
+    const snapshots=[];
+    for(const kind of ['shadchanim','guys','girls'])for(const record of (data[kind]||[]))if(Array.isArray(record.activities))snapshots.push({record,activities:[...record.activities]});
     const result=removeLinkedEntries(k,x.id,a);
     try{
       await save();
       rememberTombstones(result.tombs);
       try{render();}catch(e){}
       if(k==='shadchanim')openS(x.id);else openP(k,x.id);
-    }catch(e){console.warn('PeerMatch delete history failed',e);alert('PeerMatch could not save the deletion.');}
+    }catch(e){
+      for(const s of snapshots)s.record.activities=s.activities;
+      console.warn('PeerMatch delete history failed',e);
+      alert('PeerMatch could not save the deletion. Nothing was deleted.');
+    }
   }
 
   document.addEventListener('click',e=>{
