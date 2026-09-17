@@ -1,109 +1,88 @@
 # PeerMatch Known Issues
 
-Status target: **v127**.
+Status target: **v128**.
 
-Do not mark a behavior device-verified merely because code inspection or GitHub Pages deployment passed. Use `docs/TESTING.md` on the installed PWA.
+Do not mark behavior device-verified from code review or CI alone. Test the installed PWA.
 
-## Resolved / regression-test only
+## Stable / regression-only
 
-### Saved PDF opening
+- Saved PDF opening: device-verified at v113; `profile-pdf-ocr-v63.js` remains the attachment owner.
+- Selected profile -> selected Shadchan -> WhatsApp: routing fixed at v115; text-first + optional-photo flow device-verified at v116.
+- Looking for / To what age: v123 Add/Edit/Cancel/persistence user-verified.
+- Make Match Android return behavior: user later reported the v122 direct-return path working.
 
-Fixed and device-verified at v113. `profile-pdf-ocr-v63.js` is the intended saved-attachment owner. PDFs/non-image attachments download directly; do not reintroduce `window.open(blobUrl)`.
+## v127/v128 items still needing installed-device regression
 
-### Selected profile -> selected Shadchan -> WhatsApp
+### Email backup TXT roundtrip
 
-Root cause fixed at v115; text-first + optional-photo flow device-verified at v116. Selection must come from `window.pmGetSelected(k)`. Android direct text paths use `whatsapp://` to avoid leaving `api.whatsapp.com` underneath the PWA.
+Normal backup remains a real ZIP. Email backup is `PeerMatch_Backup_YYYY-MM-DD.txt`, containing Base64 of the exact ZIP bytes because ZIP Web Share failed on the user's Android Chrome/PWA path.
 
-### Looking for / To what age
+v127 fixed Base64 chunk boundaries. Required test: attachment appears in Gmail/share target -> send/save -> download -> Restore Backup -> verify records, history, photos, PDFs and audio.
 
-v123 Add/Edit/Cancel/persistence was later user-verified on the installed PWA.
+The TXT wrapper is not encrypted.
 
-### Make Match Android return behavior
+### History deletion / repeated shares
 
-v122 changed Make Match selection to `pmGetSelected()` and Android WhatsApp handoff to direct `whatsapp://`. User later reported this path working; keep as regression coverage.
+v127 added `shareLinkId`-first matching, conservative legacy fingerprints, bounded tombstones (`pmDeletedShareHistoryV127`), rollback on failed save, and removed the old 4-second forever reconciliation interval.
 
-## Current v127 items needing device regression
+Required tests:
 
-### 1. Email backup TXT attachment + roundtrip restore
+- fresh linked deletion stays deleted after focus/detail reopen;
+- old pre-link deletion stays deleted;
+- same unchanged profile sent twice to same Shadchan remains two distinct history pairs;
+- deleting one repeated pair leaves the other.
 
-Normal backup remains a real ZIP.
+### PDF-first profile sharing
 
-Email backup uses `PeerMatch_Backup_YYYY-MM-DD.txt`, containing Base64 of the exact ZIP bytes, because ZIP Web Share failed on the user's Android Chrome/PWA path.
+If a Guy/Girl has an attached PDF, send the actual PDF instead of OCR/autofilled text. If PDF is removed, fall back to normal text.
 
-v127 fixes a real encoding bug found during audit: the previous Base64 encoder chunked binary at `0x8000` bytes, which is not divisible by 3. Independent `btoa()` calls could therefore insert padding inside the concatenated Base64 stream. v127 uses a multiple-of-3 chunk size.
+v128 removes an obsolete competing PDF handler from `v124-backup-pdf-share.js`; `v124-pdf-share-fix.js` is the final PDF share owner. Test WhatsApp and Email plus PDF-removal -> text fallback.
 
-Required device test:
+### v128 WhatsApp queue isolation
 
-- Email backup appears as a real attachment in Gmail/share target.
-- Send/download the `.txt`.
-- Restore it.
-- Verify photos, PDFs, audio, records and history survive.
+Four legacy queue keys still exist. `v128-runtime-hardening.js` prevents them from coexisting and clears stale v127-and-earlier queue state once.
 
-The TXT wrapper is not encryption.
+This is a temporary bridge. Long-term, consolidate the four queue systems and remove the global `Storage.prototype.setItem` interception rather than adding another queue.
 
-### 2. History deletion / resurrection
+### Contact action order
 
-Before v127, two edge cases remained:
+v128 restores the requested order in Guy/Girl and Shadchan contact rows:
 
-- old unlinked WhatsApp share pairs could be recreated by `dual-share-history-v100.js` after one side was deleted;
-- repeated identical modern shares could be collapsed by old same-message duplicate logic even when they had different `shareLinkId`s.
+**Call -> Email -> WhatsApp -> SMS**
 
-v127 changes:
-
-- deletion uses `shareLinkId` first;
-- old unlinked pairs get a conservative profile/Shadchan/message/timestamp fingerprint;
-- deleted pairs store bounded tombstones in `pmDeletedShareHistoryV127`;
-- reconciliation respects tombstones;
-- modern different `shareLinkId`s remain distinct;
-- the old permanent `setInterval(sync, 4000)` loop was removed.
-
-Required device tests are in `docs/TESTING.md`.
-
-### 3. PDF-first profile sharing
-
-Explicit requirement: if a Guy/Girl has an attached PDF, share the actual PDF instead of OCR/autofilled text; after PDF removal, fall back to normal text profile.
-
-Current implementation is v124-era and should be tested on the installed device for both WhatsApp and Email, including PDF removal -> text fallback.
+Device-regression test both detail screens.
 
 ## Remaining architectural / product risks
 
-### 4. Multiple WhatsApp queue implementations
+### Lower-level WhatsApp paths still use older `wa.me`
 
-Live/runtime queue keys include:
+Main selection-bar flows use direct Android `whatsapp://`, but these lower-level paths can still use `wa.me` and may show the browser intermediary:
 
-- `pmWaSendQueue`
-- `pmMultiShadWaQueue`
-- `pmGeneralWaQueueV120`
-- `pmV124PdfSendQueue`
+- Shadchan detail WhatsApp compose (`peermatch-v19.js`);
+- sender/contact compose (`profile-contact-v40.js`);
+- Guy/Girl Contacts WhatsApp (`profile-contacts-v96.js`);
+- inline phone-number WhatsApp (`inline-phone-actions-v92.js`).
 
-Normal use finishes one flow before starting another, but an unfinished queue plus a newly started different flow can still produce overlapping state/UI. Long-term fix should consolidate queue ownership rather than add another queue.
+Future fix: one shared Android-aware opener called by each real owner. Do not add a broad capture listener.
 
-### 5. Lower-level WhatsApp paths may still use older `wa.me` behavior
+### Looking-for fields are not shared/searchable by default
 
-The main selection-bar flows are direct on Android, but ordinary Shadchan-detail compose, Guy/Girl Contacts WhatsApp, and inline-phone WhatsApp historically use lower-level owners. Test those exact paths separately. If the browser intermediary returns, fix the true owner rather than adding a broad capture listener.
+`lookingFor` and `lookingForMaxAge` are stored/displayed but not added to outgoing share text or ordinary list search. This is a product decision, not automatically a bug. Ask the user before changing.
 
-### 6. Looking-for fields are not shared/searchable by default
+### Layered runtime architecture
 
-`lookingFor` and `lookingForMaxAge` are stored/displayed but are not currently added to normal outgoing share text and are not in the ordinary list-search haystack.
+Many scripts wrap `openP`, `openS`, `renderP`, `renderS`, replace `.onclick`, and run MutationObservers. Before a change:
 
-This is an unresolved product decision, not automatically a bug. Ask the user before changing whether these fields should be public/shareable or internal-only.
+1. inspect `sw.js -> SCRIPTS`;
+2. identify the actual live owner;
+3. search all live scripts for the selector/function/storage key;
+4. inspect capture-phase listeners;
+5. prefer owner consolidation over another patch layer.
 
-### 7. Third-party OCR/PDF parsing can be blocked
+### Third-party OCR/PDF parsing
 
-PDF.js/Tesseract are loaded from public CDNs. NetSpark/offline conditions can block parsing. Attachment storage must remain independent of parsing success.
+PDF.js/Tesseract are CDN-loaded and may be blocked by NetSpark/offline conditions. Attachment storage must remain independent of parsing success.
 
-### 8. Layered runtime architecture remains the main systemic risk
+## Deployment
 
-Many scripts wrap globals, replace `.onclick`, attach capture listeners, and run MutationObservers. A later patch can silently change ownership.
-
-For any bug:
-
-1. inspect `sw.js -> SCRIPTS`,
-2. identify the actual live owner,
-3. search all live scripts for the selector/function/storage key,
-4. inspect `window` capture listeners,
-5. prefer fixing/consolidating the owner over adding another patch layer.
-
-## Stable deployment behavior
-
-The GitHub Pages workflow now reads `VERSION` and `SCRIPTS` from `sw.js`, verifies every live file exists, and deploys that exact list. Service-worker cleanup is limited to old `peermatch-v*` caches.
+The Pages workflow reads VERSION/SCRIPTS from `sw.js`, verifies the live files exist, and deploys that exact runtime. Service-worker cache cleanup is limited to old `peermatch-v*` caches.
