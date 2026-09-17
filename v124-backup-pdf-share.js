@@ -93,7 +93,6 @@
     const items=selected(k);if(!items.length||!items.some(hasPdf))return false;
     const shads=selected('shadchanim');
 
-    // One profile -> many selected Shadchanim: repeat the PDF share one recipient at a time.
     if(items.length===1&&hasPdf(items[0])&&shads.length>1){
       for(let i=0;i<shads.length;i++){
         const sh=shads[i];
@@ -104,13 +103,7 @@
       return true;
     }
 
-    // For a single selected Shadchan we can record the intended recipient, although the
-    // browser file share sheet still requires the user to choose WhatsApp/email there.
     const shad=shads.length===1?shads[0]:null;
-
-    // If any selected profile has a PDF, keep the selection one-profile-at-a-time. PDF
-    // items use the attachment. Text-only items use the native share sheet so mixed
-    // selections never fall back to ugly OCR text for the PDF profile.
     for(let i=0;i<items.length;i++){
       const x=items[i];
       if(items.length>1&&!confirm('Share '+(clean(x.name)||'profile')+' ('+(i+1)+' of '+items.length+')?'))continue;
@@ -128,7 +121,8 @@
   }
 
   function bindWhatsApp(k){
-    const b=document.getElementById('pmWhatsApp-'+k);if(!b||b.dataset.pmV124Pdf==='1')return;
+    const b=document.getElementById('pmWhatsApp-'+k);
+    if(!b||b.dataset.pmV124Pdf==='1'||b.dataset.pmV120Bound!=='1')return;
     const prior=b.onclick;b.dataset.pmV124Pdf='1';
     b.onclick=async function(e){
       const items=selected(k);
@@ -137,10 +131,6 @@
     };
   }
 
-  /* Email is currently intercepted at window-capture level by profile-tools-v62.js, so a
-     later click handler cannot beat it. When PDFs are selected, use pointerdown to rename
-     the button just for that click and replace its target onclick. This lets the PDF file
-     share run while leaving the proven text-email path completely untouched otherwise. */
   function bindPdfEmail(k){
     const b=document.getElementById('pmEmail-'+k);if(!b||b.dataset.pmV124PdfEmail==='1')return;
     b.dataset.pmV124PdfEmail='1';
