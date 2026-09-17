@@ -1,8 +1,6 @@
-/* PeerMatch v57: clear direct-contact actions inside profile and shadchan details.
-   - Guy/Girl profile: Contact person.
-   - Shadchan detail: Contact shadchan.
-   - Call | Email | SMS | WhatsApp all use the same blue button style.
-*/
+/* PeerMatch v128: clear direct-contact actions inside profile and Shadchan details.
+   Preferred action order: Call -> Email -> WhatsApp -> SMS.
+   All channels keep the same blue button style. */
 (function(){
   const style=document.createElement('style');
   style.textContent=`
@@ -76,7 +74,7 @@
     addChannelClass(email,'Email');
     addChannelClass(sms,'Sms');
     addChannelClass(wa,'WhatsApp');
-    ensureOrder(row,[call,email,sms,wa]);
+    ensureOrder(row,[call,email,wa,sms]);
   }
 
   function polishShadchanContact(){
@@ -94,7 +92,7 @@
     addChannelClass(email,'Email');
     addChannelClass(sms,'Sms');
     addChannelClass(wa,'WhatsApp');
-    ensureOrder(row,[call,email,sms,wa]);
+    ensureOrder(row,[call,email,wa,sms]);
   }
 
   function polish(){
