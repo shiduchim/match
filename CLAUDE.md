@@ -60,6 +60,7 @@ from `peermatch-v11.js`.
 ## Guy/Girl detail order
 
 1. Header/name/photo/meta + Edit top-right
+1.5. Last call status banner, when a call-note exists (`v129-call-followup.js`)
 2. Profile text
 3. Looking for / To what age, when present
 4. Attachment
@@ -67,6 +68,9 @@ from `peermatch-v11.js`.
 6. Quick details / other info
 7. History
 8. Added-to-PeerMatch date near bottom
+
+The same banner appears in the Shadchan detail, immediately after its header, before the
+Contact buttons row.
 
 `profile-looking-for-v123.js` owns `lookingFor` and `lookingForMaxAge`. These fields are currently not automatically included in outgoing share text and are not part of ordinary list search. Ask before changing that behavior.
 
@@ -133,8 +137,13 @@ audio note) for Guys, Girls, and Shadchanim.
 - It records which profile/Shadchan was open via its own `openP`/`openS` wrapper, the same
   pattern other files use.
 - Saved notes are stored as a new activity type, `call-note` (`text`, optional `audio` Blob,
-  `answered` boolean, `durationApproxSec`), rendered by `acts()` in `audio-v24.js` (the
-  current live owner of activity rendering).
+  `answered` boolean, optional `durationApproxSec`), rendered by `acts()` in `audio-v24.js`
+  (the current live owner of activity rendering) so the full call-note history stays under
+  Profile/Shadchan History, unchanged in position.
+- `v129-call-followup.js` also renders a "Last call status" banner directly above the
+  Profile text (Guy/Girl) or above the Contact buttons (Shadchan). It is computed live from
+  the most recent `call-note` activity — there is no separate persisted field — so it always
+  matches History and automatically updates if a `call-note` entry is later deleted.
 - No web/PWA API reports true call state (answered/declined/busy) — that is OS telephony
   state a page never sees. `answered` is only a guess from how long the app was backgrounded
   (>= 15s defaults to "Yes"), always shown as an editable Yes/No choice before saving. Do not

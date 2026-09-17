@@ -35,9 +35,9 @@
   }catch(e){}
 
   const priorOpenP=window.openP;
-  if(typeof priorOpenP==='function')window.openP=function(k,id){active={k,id};return priorOpenP(k,id);};
+  if(typeof priorOpenP==='function')window.openP=function(k,id){active={k,id};const r=priorOpenP(k,id);setTimeout(mountBanner,80);return r;};
   const priorOpenS=window.openS;
-  if(typeof priorOpenS==='function')window.openS=function(id){active={k:'shadchanim',id};return priorOpenS(id);};
+  if(typeof priorOpenS==='function')window.openS=function(id){active={k:'shadchanim',id};const r=priorOpenS(id);setTimeout(mountBanner,80);return r;};
 
   function recordFor(k,id){return (data[k]||[]).find(x=>String(x.id)===String(id))||null;}
   function nowStamp(){return typeof stamp==='function'?stamp():new Date().toLocaleString();}
@@ -121,8 +121,70 @@
     .pmV129Reminder{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff7dd;border:1px solid #ead79d;border-radius:11px;padding:8px 10px;margin-bottom:11px}
     .pmV129Reminder span{font-size:12px;font-weight:850;color:#76551c}
     .pmV129Reminder button{width:auto!important;min-width:0!important;margin:0!important;padding:7px 10px!important;border-radius:9px!important;font-size:11px!important;font-weight:850!important;background:#fff!important;color:#76551c!important;border:1px solid #ead79d!important}
+    #sheet .pmV129Banner{background:#eaf5ec;border:1px solid #cfe5d5;border-radius:13px;padding:10px 12px;margin:8px 0 12px}
+    #sheet .pmV129BannerTop{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted);margin-bottom:4px}
+    #sheet .pmV129BannerMeta{font-size:11px;font-weight:850;color:#245f37;margin-bottom:4px}
+    #sheet .pmV129BannerText{font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.4}
+    #sheet .pmV129Banner audio{width:100%;margin-top:6px}
   `;
   document.head.appendChild(style);
+
+  function lastCallNote(x){
+    if(!x?.activities?.length)return null;
+    let best=null;
+    for(const a of x.activities){
+      if(a.type==='call-note'&&(!best||(a.id||0)>(best.id||0)))best=a;
+    }
+    return best;
+  }
+
+  function bannerHTML(a){
+    const bits=[];
+    if(a.answered!=null)bits.push(a.answered?'Answered':'Not answered');
+    if(a.durationApproxSec)bits.push('~'+formatDuration(a.durationApproxSec)+' away');
+    const meta=bits.length?`<div class="pmV129BannerMeta">${esc(bits.join(' • '))}</div>`:'';
+    const textPart=a.text?`<div class="pmV129BannerText">${esc(a.text)}</div>`:'';
+    const audioPart=a.audio?`<audio controls src="${url(a.audio)}"></audio>`:'';
+    return `<div class="pmV129BannerTop"><span>Last call status${a.phone?' • '+esc(a.phone):''}</span><span>${esc(a.ts||'')}</span></div>${meta}${textPart}${audioPart}`;
+  }
+
+  function detailInfo(){
+    const sheet=document.getElementById('sheet');
+    if(!sheet||!active)return null;
+    if(active.k==='shadchanim'){
+      const header=sheet.querySelector('.v19ShadHead');
+      if(!header||document.getElementById('v19SName')||document.getElementById('esName')||document.getElementById('sn'))return null;
+      return{header,x:recordFor(active.k,active.id)};
+    }
+    if(active.k==='guys'||active.k==='girls'){
+      const header=sheet.querySelector('.v19Head');
+      if(!header||sheet.querySelector('.v19ShadHead')||document.getElementById('v19Profile'))return null;
+      return{header,x:recordFor(active.k,active.id)};
+    }
+    return null;
+  }
+
+  function mountBanner(){
+    const sheet=document.getElementById('sheet');
+    const info=detailInfo();
+    if(!info||!info.x){sheet?.querySelectorAll('.pmV129Banner').forEach(e=>e.remove());return;}
+    const note=lastCallNote(info.x);
+    let banner=sheet.querySelector('.pmV129Banner');
+    if(!note){banner?.remove();return;}
+    const sig=String(note.id);
+    if(banner&&banner.dataset.sig===sig)return;
+    banner?.remove();
+    banner=document.createElement('div');
+    banner.className='pmV129Banner';
+    banner.dataset.sig=sig;
+    banner.innerHTML=bannerHTML(note);
+    info.header.insertAdjacentElement('afterend',banner);
+  }
+
+  let bannerQueued=false;
+  function scheduleBanner(){if(bannerQueued)return;bannerQueued=true;requestAnimationFrame(()=>{bannerQueued=false;mountBanner();});}
+  new MutationObserver(scheduleBanner).observe(document.body,{childList:true,subtree:true});
+  scheduleBanner();
 
   function closePopup(){
     document.getElementById('pmV129Popup')?.remove();
@@ -230,16 +292,10 @@
       const target=recordFor(rec.k,rec.id);
       if(!target){closePopup();return;}
       target.activities=target.activities||[];
-      target.activities.push({
-        id:Date.now(),
-        type:'call-note',
-        text,
-        audio:audioBlob||undefined,
-        phone:rec.phone||'',
-        answered,
-        durationApproxSec:durationSec||undefined,
-        ts:nowStamp()
-      });
+      const entry={id:Date.now(),type:'call-note',text,phone:rec.phone||'',answered,ts:nowStamp()};
+      if(audioBlob)entry.audio=audioBlob;
+      if(durationSec)entry.durationApproxSec=durationSec;
+      target.activities.push(entry);
       try{
         await save();
       }catch(e){
