@@ -227,6 +227,10 @@
     return [...x.activities].reverse().map(a=>{
       if(a.type==='call-note'){
         const parts=[];
+        if(a.answered!=null){
+          const dur=a.durationApproxSec?` (~${a.durationApproxSec<60?a.durationApproxSec+'s':Math.floor(a.durationApproxSec/60)+'m '+(a.durationApproxSec%60)+'s'} away)`:'';
+          parts.push(`<div class="small">${a.answered?'Answered':'Not answered'}${dur}</div>`);
+        }
         if(a.text)parts.push(`<div class="profileText">${esc(a.text)}</div>`);
         if(a.audio)parts.push(`<audio controls src="${url(a.audio)}"></audio>`);
         return `<div class="event"><div class="eventTop"><span>Call status update${a.phone?' • '+esc(a.phone):''}</span><span>${esc(a.ts||'')}</span></div>${parts.join('')||'<div class="small">No details recorded.</div>'}</div>`;

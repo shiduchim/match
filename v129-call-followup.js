@@ -7,6 +7,13 @@
    uses that exact label), then watches for the app regaining visibility afterward
    (the OS dialer closing). It never calls preventDefault/stopPropagation, so it cannot
    compete with or replace any existing Call/tel: handler.
+
+   No browser API reports whether a phone call was actually answered — that is OS
+   telephony state a web page never sees. "Answered" is therefore only a guess from
+   how long PeerMatch was in the background (dialer open): short away-time usually
+   means it rang out / was declined / went straight to voicemail, longer usually
+   means a conversation happened. The guess is always shown as an editable Yes/No
+   choice, never saved as fact without the user seeing and being able to correct it.
 */
 (function(){
   document.documentElement.dataset.peerMatchVersion='129';
@@ -15,6 +22,7 @@
   const MIN_GAP_MS=600;
   const MAX_AGE_MS=3*60*60*1000;
   const SHOW_DELAY_MS=500;
+  const ANSWERED_GUESS_THRESHOLD_SEC=15;
 
   let active=null;
   let pending=null;
@@ -33,6 +41,11 @@
 
   function recordFor(k,id){return (data[k]||[]).find(x=>String(x.id)===String(id))||null;}
   function nowStamp(){return typeof stamp==='function'?stamp():new Date().toLocaleString();}
+  function formatDuration(sec){
+    if(sec<60)return sec+'s';
+    const m=Math.floor(sec/60),s=sec%60;
+    return m+'m'+(s?' '+s+'s':'');
+  }
 
   function extractPhoneNear(el){
     const scope=el.closest('.pmV96ContactRow,.v19Contact,.pmV92PhoneSheet,.pmUnifiedContact,#sheet')||document.body;
@@ -101,6 +114,13 @@
     .pmV129Sheet textarea{min-height:100px}
     .pmV129Row{display:grid;gap:8px;margin-top:10px}
     .pmV129Status{font-size:11px;color:var(--muted);margin-top:6px;min-height:14px}
+    .pmV129AnsweredLabel{font-size:12px;font-weight:850;color:var(--text);margin-top:12px}
+    .pmV129AnsweredHint{font-size:11px;color:var(--muted);margin:2px 0 6px}
+    .pmV129AnsweredRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .pmV129AnsweredRow button{width:100%!important;margin:0!important}
+    .pmV129Reminder{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff7dd;border:1px solid #ead79d;border-radius:11px;padding:8px 10px;margin-bottom:11px}
+    .pmV129Reminder span{font-size:12px;font-weight:850;color:#76551c}
+    .pmV129Reminder button{width:auto!important;min-width:0!important;margin:0!important;padding:7px 10px!important;border-radius:9px!important;font-size:11px!important;font-weight:850!important;background:#fff!important;color:#76551c!important;border:1px solid #ead79d!important}
   `;
   document.head.appendChild(style);
 
@@ -116,19 +136,53 @@
     if(!x)return;
     popupOpen=true;
 
+    const durationSec=Math.max(0,Math.round((rec.durationMs||0)/1000));
+    let answered=durationSec>=ANSWERED_GUESS_THRESHOLD_SEC;
+
     const shade=document.createElement('div');shade.id='pmV129Popup';shade.className='pmV129Shade';
     const box=document.createElement('div');box.className='pmV129Sheet';
     const title=document.createElement('div');title.className='pmV129Title';title.textContent='Call ended — add a status update?';
     const sub=document.createElement('div');sub.className='pmV129Sub';
     sub.textContent=String(x.name||'This contact')+(rec.phone?' • '+rec.phone:'');
+
+    let reminderInfo=null;
+    if(rec.k==='shadchanim'&&typeof window.pmCallReminderInfo==='function'){
+      try{reminderInfo=window.pmCallReminderInfo(rec.id);}catch(e){}
+    }
+    let reminderBar=null;
+    if(reminderInfo){
+      reminderBar=document.createElement('div');reminderBar.className='pmV129Reminder';
+      const label=document.createElement('span');label.textContent='Follow-up: Call '+(reminderInfo.label||reminderInfo.date);
+      const cancelReminderBtn=document.createElement('button');cancelReminderBtn.type='button';cancelReminderBtn.textContent='Cancel follow-up';
+      cancelReminderBtn.onclick=()=>{
+        try{window.pmClearCallReminder(rec.id);}catch(e){console.warn('PeerMatch v129 clear reminder',e);}
+        reminderBar.remove();
+        status.textContent='Follow-up reminder canceled.';
+      };
+      reminderBar.append(label,cancelReminderBtn);
+    }
+
     const noteInput=document.createElement('textarea');noteInput.placeholder='What happened on the call? (optional)';
     const audioBtn=document.createElement('button');audioBtn.type='button';audioBtn.className='secondary full';audioBtn.textContent='Record audio note';
+    const answeredLabel=document.createElement('div');answeredLabel.className='pmV129AnsweredLabel';answeredLabel.textContent='Was the call answered?';
+    const answeredHint=document.createElement('div');answeredHint.className='pmV129AnsweredHint';
+    answeredHint.textContent=durationSec?`PeerMatch's best guess from being away ~${formatDuration(durationSec)} — tap to correct.`:'PeerMatch cannot detect this — tap to set it.';
+    const answeredRow=document.createElement('div');answeredRow.className='pmV129AnsweredRow';
+    const yesBtn=document.createElement('button');yesBtn.type='button';yesBtn.textContent='Yes';
+    const noBtn=document.createElement('button');noBtn.type='button';noBtn.textContent='No';
+    function paintAnswered(){yesBtn.className=answered?'primary':'secondary';noBtn.className=answered?'secondary':'primary';}
+    paintAnswered();
+    yesBtn.onclick=()=>{answered=true;paintAnswered();};
+    noBtn.onclick=()=>{answered=false;paintAnswered();};
+    answeredRow.append(yesBtn,noBtn);
     const status=document.createElement('div');status.className='pmV129Status';
     const row=document.createElement('div');row.className='pmV129Row';
     const saveBtn=document.createElement('button');saveBtn.type='button';saveBtn.className='primary';saveBtn.textContent='Save status update';
     const skipBtn=document.createElement('button');skipBtn.type='button';skipBtn.className='secondary';skipBtn.textContent='Skip';
     row.append(saveBtn,skipBtn);
-    box.append(title,sub,noteInput,audioBtn,status,row);
+    box.append(title,sub);
+    if(reminderBar)box.appendChild(reminderBar);
+    box.append(noteInput,audioBtn,answeredLabel,answeredHint,answeredRow,status,row);
     shade.appendChild(box);document.body.appendChild(shade);
 
     let audioBlob=null;
@@ -172,10 +226,6 @@
         capture=null;activeCapture=null;
       }
       const text=String(noteInput.value||'').trim();
-      if(!text&&!audioBlob){
-        status.textContent='Add a note or record audio, or tap Skip.';
-        return;
-      }
       saveBtn.disabled=true;skipBtn.disabled=true;
       const target=recordFor(rec.k,rec.id);
       if(!target){closePopup();return;}
@@ -186,6 +236,8 @@
         text,
         audio:audioBlob||undefined,
         phone:rec.phone||'',
+        answered,
+        durationApproxSec:durationSec||undefined,
         ts:nowStamp()
       });
       try{
@@ -210,6 +262,7 @@
     if(!rec)return;
     const age=Date.now()-rec.ts;
     if(age<MIN_GAP_MS||age>MAX_AGE_MS)return;
+    rec.durationMs=age;
     setTimeout(()=>showFollowup(rec),SHOW_DELAY_MS);
   }
 

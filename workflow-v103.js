@@ -140,6 +140,15 @@
     const h=document.querySelector('#shadchanimSection h1');if(!h)return;let b=document.getElementById('pmV103CallsBadge');if(!b){b=document.createElement('button');b.type='button';b.id='pmV103CallsBadge';h.appendChild(b);b.onclick=openCalls;}const n=scheduled().length;b.textContent='Calls '+n;b.classList.toggle('hasCalls',n>0);
   }
 
+  /* Shared with v129-call-followup.js so its post-call popup can offer canceling an
+     existing "Call today/tomorrow" reminder without duplicating this file's clear logic. */
+  window.pmCallReminderInfo=function(id){
+    const x=shad(id);
+    if(!x||!trim(x.callReminderDate))return null;
+    return{date:x.callReminderDate,label:dueLabel(x.callReminderDate)};
+  };
+  window.pmClearCallReminder=function(id){const x=shad(id);if(x)clearCallReminder(x);};
+
   const priorS=window.openS;if(typeof priorS==='function')window.openS=function(id){activeShad=id;const r=priorS(id);setTimeout(polish,60);return r;};
   const priorP=window.openP;if(typeof priorP==='function')window.openP=function(k,id){activeShad=null;return priorP(k,id);};
   const priorRenderS=window.renderS;if(typeof priorRenderS==='function')window.renderS=function(){const r=priorRenderS();requestAnimationFrame(callsBadge);return r;};

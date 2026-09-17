@@ -132,8 +132,18 @@ audio note) for Guys, Girls, and Shadchanim.
   then watches `visibilitychange` for the app regaining focus (the OS dialer closing).
 - It records which profile/Shadchan was open via its own `openP`/`openS` wrapper, the same
   pattern other files use.
-- Saved notes are stored as a new activity type, `call-note` (`text` and/or `audio` Blob),
-  rendered by `acts()` in `audio-v24.js` (the current live owner of activity rendering).
+- Saved notes are stored as a new activity type, `call-note` (`text`, optional `audio` Blob,
+  `answered` boolean, `durationApproxSec`), rendered by `acts()` in `audio-v24.js` (the
+  current live owner of activity rendering).
+- No web/PWA API reports true call state (answered/declined/busy) — that is OS telephony
+  state a page never sees. `answered` is only a guess from how long the app was backgrounded
+  (>= 15s defaults to "Yes"), always shown as an editable Yes/No choice before saving. Do not
+  present it as a verified fact elsewhere in the UI.
+- When the call was to a Shadchan with an existing "Call today/tomorrow" reminder
+  (`workflow-v103.js`, `x.callReminderDate`), the popup offers a "Cancel follow-up" button.
+  It calls `window.pmCallReminderInfo`/`window.pmClearCallReminder`, exported by
+  `workflow-v103.js` for this purpose, rather than duplicating its clear logic. This does not
+  add reminders for Guys/Girls — reminders stay Shadchan-only.
 - Pending call state is kept in memory and in `localStorage['pmCallFollowupV129']` (survives
   an Android WebView reload while the dialer was open); it is unrelated to the four legacy
   WhatsApp queue keys and is not touched by `v128-runtime-hardening.js`.
