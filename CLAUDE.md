@@ -241,3 +241,7 @@ Fresh regression required after v127/v128:
 - Keep fixes narrow and preserve working behavior.
 - Review actual diffs, not commit messages only.
 - Do not call a new behavior device-verified until the user tests it.
+- The user is the sole user of this app and owns the repo. Do not ask for permission to
+  merge and deploy ordinary app changes: finish the work, merge to `main`, push, and tell
+  them to fully close/reopen the PWA. Still ask when a change is destructive, migrates
+  stored data, or contradicts a documented constraint in this file.
