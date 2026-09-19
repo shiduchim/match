@@ -21,6 +21,9 @@
     #sheet .pmV93Flags{display:flex;flex-wrap:wrap;gap:7px 12px;align-items:center;margin:0 0 9px;padding:0 0 9px;border-bottom:1px solid var(--line)}
     #sheet .pmV93Flags label{display:inline-flex!important;align-items:center!important;gap:5px!important;margin:0!important;width:auto!important;font-size:11px!important;font-weight:750!important;cursor:pointer!important;pointer-events:auto!important}
     #sheet .pmV93Flags input{width:16px!important;height:16px!important;min-width:16px!important;margin:0!important;padding:0!important;pointer-events:auto!important;accent-color:var(--accent)}
+    #sheet .pmV93Group{margin:0 0 9px;padding:0 0 9px;border-bottom:1px solid var(--line)}
+    #sheet .pmV93GroupTitle{font-size:11px;font-weight:900;color:var(--muted);margin:0 0 5px}
+    #sheet .pmV93Group .pmV93Flags{margin:0;padding:0;border-bottom:0}
     #sheet .pmV93Field{display:grid;grid-template-columns:92px minmax(0,1fr);gap:8px;align-items:center;margin:6px 0}
     #sheet .pmV93Field span{font-size:11px;font-weight:800;color:var(--text)}
     #sheet .pmV93Field input{
@@ -75,6 +78,63 @@
     return inp;
   }
 
+  /* Simple yes/no profile flags. Each entry is [record field, label]; the field is stored
+     as a plain boolean so older records that lack it simply read as unchecked. */
+  const FLAGS=[
+    ['divorced','Divorced'],
+    ['withKids','With kids'],
+    ['kosherForKohen','Kosher for Kohen'],
+    ['kohen','Kohen'],
+    ['baalTeshuvah','Baal teshuvah'],
+    ['watchesMovies','Watches movies'],
+    ['prays3Daily','Prays 3x daily'],
+    ['smokes','Smokes']
+  ];
+  const LANGUAGES=[['langEnglish','English'],['langHebrew','Hebrew'],['langRussian','Russian']];
+  const BODY_TYPES=[['regular','Regular'],['overweight','Overweight']];
+
+  function bindFlags(row,x){
+    for(const cb of row.querySelectorAll('input')){
+      cb.checked=!!x[cb.dataset.flag];stop(cb);
+      cb.addEventListener('change',()=>{const r=current();if(!r)return;r[cb.dataset.flag]=!!cb.checked;saveQuiet();});
+    }
+  }
+
+  function group(title){
+    const wrap=document.createElement('div');wrap.className='pmV93Group';
+    const head=document.createElement('div');head.className='pmV93GroupTitle';head.textContent=title;
+    const row=document.createElement('div');row.className='pmV93Flags';
+    wrap.append(head,row);
+    return{wrap,row};
+  }
+
+  function flagGroup(title,entries,x){
+    const g=group(title);
+    g.row.innerHTML=entries.map(f=>`<label><input type="checkbox" data-flag="${f[0]}">${f[1]}</label>`).join('');
+    bindFlags(g.row,x);
+    return g.wrap;
+  }
+
+  /* Body type is one value, not a set, so the two boxes behave as a single choice:
+     ticking one clears the other, and unticking the current one clears the field. */
+  function bodyTypeGroup(x){
+    const g=group('Body type');
+    g.row.innerHTML=BODY_TYPES.map(b=>`<label><input type="checkbox" data-body="${b[0]}">${b[1]}</label>`).join('');
+    const boxes=[...g.row.querySelectorAll('input')];
+    const paint=v=>boxes.forEach(cb=>{cb.checked=cb.dataset.body===v;});
+    paint(String(x.bodyType||''));
+    for(const cb of boxes){
+      stop(cb);
+      cb.addEventListener('change',()=>{
+        const r=current();if(!r)return;
+        r.bodyType=cb.checked?cb.dataset.body:'';
+        paint(r.bodyType);
+        saveQuiet();
+      });
+    }
+    return g.wrap;
+  }
+
   function mount(){
     const sheet=document.getElementById('sheet'),x=current();
     if(!isDetail(sheet)||!x){
@@ -95,12 +155,11 @@
 
     if(active.k==='guys'||active.k==='girls'){
       const flags=document.createElement('div');flags.className='pmV93Flags';
-      flags.innerHTML=`<label><input type="checkbox" data-flag="divorced">Divorced</label><label><input type="checkbox" data-flag="withKids">With kids</label><label><input type="checkbox" data-flag="kosherForKohen">Kosher for Kohen</label>`;
-      for(const cb of flags.querySelectorAll('input')){
-        cb.checked=!!x[cb.dataset.flag];stop(cb);
-        cb.addEventListener('change',()=>{const r=current();if(!r)return;r[cb.dataset.flag]=!!cb.checked;saveQuiet();});
-      }
+      flags.innerHTML=FLAGS.map(f=>`<label><input type="checkbox" data-flag="${f[0]}">${f[1]}</label>`).join('');
+      bindFlags(flags,x);
       box.appendChild(flags);
+      box.appendChild(flagGroup('Speaks languages',LANGUAGES,x));
+      box.appendChild(bodyTypeGroup(x));
     }
 
     addField(box,'Tags',x.tags,'Add tags','tags');

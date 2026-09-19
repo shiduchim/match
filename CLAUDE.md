@@ -12,7 +12,7 @@ Load order matters. The codebase has wrappers around `openP`, `openS`, `renderP`
 
 ## Current version
 
-Current intended PWA/service-worker version: **v129**.
+Current intended PWA/service-worker version: **v130**.
 
 For runtime changes:
 
@@ -65,14 +65,34 @@ from `peermatch-v11.js`.
 3. Looking for / To what age, when present
 4. Attachment
 5. Contacts
-6. Quick details / other info
+6. Quick details / other info (`stable-details-v93.js`)
 7. History
 8. Added-to-PeerMatch date near bottom
 
 The same banner appears in the Shadchan detail, immediately after its header, before the
 Contact buttons row.
 
-`profile-looking-for-v123.js` owns `lookingFor` and `lookingForMaxAge`. These fields are currently not automatically included in outgoing share text and are not part of ordinary list search. Ask before changing that behavior.
+`profile-looking-for-v123.js` owns `lookingFor` and `lookingForMaxAge`. As of v130 its detail
+box re-mounts from its MutationObserver with a value signature, instead of relying on a single
+delayed render after `openP`, because later-loading detail sections could drop it on a slow
+device. These fields are currently not automatically included in outgoing share text and are not part of ordinary list search. Ask before changing that behavior.
+
+## Quick details flags
+
+`stable-details-v93.js` owns the Guy/Girl quick-details box: the checkbox row, the
+Speaks-languages and Body-type groups, and the Tags / Religious level / Religious details
+fields. It edits the record in place on the detail page — there is no separate form — and
+saves through `saveQuiet()`.
+
+Boolean flags live in its `FLAGS` table (`[field, label]`): `divorced`, `withKids`,
+`kosherForKohen`, `kohen`, `baalTeshuvah`, `watchesMovies`, `prays3Daily`, `smokes`.
+Languages are separate booleans (`langEnglish`, `langHebrew`, `langRussian`).
+
+`bodyType` is a single string (`'regular'`, `'overweight'`, or `''`), not a set: its two
+boxes behave as one choice, so ticking one clears the other and unticking clears the field.
+
+Add a new flag by appending to `FLAGS`, not by adding another file. Records saved before a
+flag existed simply read as unchecked.
 
 ## Attachments / PDFs
 

@@ -125,13 +125,14 @@
     },true);
   }
 
-  function renderDetail(k,id){
+  function renderDetail(k,id,sig){
     const sheet=document.getElementById('sheet'),x=record(k,id);if(!sheet||!x)return;
     sheet.querySelectorAll('.pmV123LookingDetail').forEach(el=>el.remove());
     const looking=trim(x.lookingFor),age=trim(x.lookingForMaxAge);
     if(!looking&&!age)return;
 
     const box=document.createElement('div');box.className='pmV123LookingDetail';
+    box.dataset.sig=sig||'';
     if(looking){
       const title=document.createElement('div');title.className='pmV123LookingTitle';title.textContent='Looking for';
       const text=document.createElement('div');text.className='pmV123LookingText';text.textContent=looking;
@@ -149,6 +150,29 @@
     anchor?.insertAdjacentElement('afterend',box);
   }
 
+  /* The Guy/Girl detail sheet is assembled by several files that each add their own section
+     asynchronously after openP returns. A single delayed render can therefore be dropped on a
+     slower device, so the box is re-checked on every DOM change and re-inserted when missing.
+     The signature guard keeps that idempotent, so it cannot loop against its own mutation. */
+  function detailTarget(){
+    const sheet=document.getElementById('sheet');
+    if(!sheet||document.getElementById('v19Profile'))return null;
+    if(!sheet.querySelector('.v19Head')||sheet.querySelector('.v19ShadHead'))return null;
+    if(!activeProfile||(activeProfile.k!=='guys'&&activeProfile.k!=='girls'))return null;
+    return record(activeProfile.k,activeProfile.id)?activeProfile:null;
+  }
+
+  function ensureDetail(){
+    const sheet=document.getElementById('sheet'),target=detailTarget();
+    if(!target){sheet?.querySelectorAll('.pmV123LookingDetail').forEach(el=>el.remove());return;}
+    const x=record(target.k,target.id),looking=trim(x.lookingFor),age=trim(x.lookingForMaxAge);
+    const existing=sheet.querySelector('.pmV123LookingDetail');
+    if(!looking&&!age){existing?.remove();return;}
+    const sig=target.k+':'+target.id+':'+looking+':'+age;
+    if(existing&&existing.dataset.sig===sig)return;
+    renderDetail(target.k,target.id,sig);
+  }
+
   const priorOpenP=window.openP;
   if(typeof priorOpenP==='function')window.openP=function(k,id){
     activeProfile={k,id};
@@ -158,7 +182,7 @@
       if(r){applyValues(r,v);saveQuiet(k);}
     }
     const out=priorOpenP(k,id);
-    setTimeout(()=>renderDetail(k,id),90);
+    setTimeout(ensureDetail,90);
     return out;
   };
 
@@ -166,7 +190,7 @@
   function schedule(){
     if(scheduled)return;
     scheduled=true;
-    requestAnimationFrame(()=>{scheduled=false;installForm();});
+    requestAnimationFrame(()=>{scheduled=false;installForm();ensureDetail();});
   }
   new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
   schedule();
