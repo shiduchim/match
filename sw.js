@@ -1,12 +1,19 @@
-const VERSION='130';
+const VERSION='131';
 const CACHE='peermatch-v'+VERSION;
 const SCRIPTS=[
-  'whatsapp-enhance.js','peermatch-v11.js','ui-v18.js','peermatch-v19.js','audio-v24.js','send-match-v27.js','make-match-v32.js','match-text-required-v33.js','backup-v28.js','history-delete-v30.js','history-composer-v36.js','sender-fields-v39.js','profile-contact-v40.js','profile-required-v44.js','feature-request-v46.js','profile-display-v48.js','email-photo-v51.js','final-fixes-v107.js','profile-share-v52.js','shadchan-share-v55.js','selection-layout-v54.js','contact-actions-v56.js','make-match-v60-ui.js','whatsapp-import-v61.js','profile-tools-v62.js','profile-pdf-ocr-v63.js','phone-links-v64.js','ux-v65.js','ux-v65-fix.js','forms-v65.js','link-recovery-v65.js','translate-v65.js','make-match-v65-fix.js','waiting-v65.js','attachment-v66.js','tags-v68.js','phone-ui-v69.js','link-context-v71.js','ui-fixes-v73.js','profile-contact-v74.js','linked-shadchan-v75.js','shadchan-layout-v76.js','edit-buttons-v77.js','contact-inline-v79.js','reverse-links-v80.js','girl-photo-v83.js','attachment-choice-v84.js','profile-under-layout-v85.js','form-order-v86.js','selection-sms-fix-v87.js','profile-waiting-list-v89.js','detail-controls-v91.js','inline-phone-actions-v92.js','stable-details-v93.js','shadchan-referral-v95.js','profile-contacts-v96.js','history-recipient-v96.js','referred-group-style-v98.js','referred-group-style-v99.js','dual-share-history-v100.js','referred-group-style-v101.js','workflow-v103.js','contact-phone-fix-v105.js','added-date-v109.js','v117-ui-fix.js','v119-multi-shadchan.js','v120-general-whatsapp.js','v121-shadchan-whatsapp.js','profile-looking-for-v123.js','v124-backup-pdf-share.js','v124-pdf-share-fix.js','v125-email-backup-direct.js','v128-runtime-hardening.js','v129-call-followup.js'
+  'whatsapp-enhance.js','peermatch-v11.js','ui-v18.js','peermatch-v19.js','audio-v24.js','send-match-v27.js','make-match-v32.js','match-text-required-v33.js','backup-v28.js','history-delete-v30.js','history-composer-v36.js','sender-fields-v39.js','profile-contact-v40.js','profile-required-v44.js','feature-request-v46.js','profile-display-v48.js','email-photo-v51.js','final-fixes-v107.js','profile-share-v52.js','shadchan-share-v55.js','selection-layout-v54.js','contact-actions-v56.js','make-match-v60-ui.js','whatsapp-import-v61.js','profile-tools-v62.js','profile-pdf-ocr-v63.js','phone-links-v64.js','ux-v65.js','ux-v65-fix.js','forms-v65.js','link-recovery-v65.js','translate-v65.js','make-match-v65-fix.js','waiting-v65.js','attachment-v66.js','tags-v68.js','phone-ui-v69.js','link-context-v71.js','ui-fixes-v73.js','profile-contact-v74.js','linked-shadchan-v75.js','shadchan-layout-v76.js','edit-buttons-v77.js','contact-inline-v79.js','reverse-links-v80.js','girl-photo-v83.js','attachment-choice-v84.js','profile-under-layout-v85.js','form-order-v86.js','selection-sms-fix-v87.js','profile-waiting-list-v89.js','detail-controls-v91.js','inline-phone-actions-v92.js','stable-details-v93.js','shadchan-referral-v95.js','profile-contacts-v96.js','history-recipient-v96.js','referred-group-style-v98.js','referred-group-style-v99.js','dual-share-history-v100.js','referred-group-style-v101.js','workflow-v103.js','contact-phone-fix-v105.js','added-date-v109.js','v117-ui-fix.js','v119-multi-shadchan.js','v120-general-whatsapp.js','v121-shadchan-whatsapp.js','profile-looking-for-v123.js','v124-backup-pdf-share.js','v124-pdf-share-fix.js','v125-email-backup-direct.js','v128-runtime-hardening.js','v129-call-followup.js','v131-version-badge.js'
 ];
 const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg',...SCRIPTS.map(x=>'./'+x)];
 
+/* Precache best-effort, one file at a time. cache.addAll() rejects the whole install if any
+   single URL fails, which under NetSpark or a flaky mobile connection left the old worker
+   active and the new version permanently unreachable. The fetch handler is network-first and
+   refills the cache anyway, so a file missed here is recovered on first use. */
 self.addEventListener('install',e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));
+  e.waitUntil((async()=>{
+    const c=await caches.open(CACHE);
+    await Promise.all(SHELL.map(u=>c.add(u).catch(()=>{})));
+  })());
   self.skipWaiting();
 });
 

@@ -12,7 +12,7 @@ Load order matters. The codebase has wrappers around `openP`, `openS`, `renderP`
 
 ## Current version
 
-Current intended PWA/service-worker version: **v130**.
+Current intended PWA/service-worker version: **v131**.
 
 For runtime changes:
 
@@ -25,6 +25,16 @@ For runtime changes:
 7. tell the user to fully close/reopen the installed PWA.
 
 Docs-only changes do not require a version bump.
+
+The running version is shown as a small badge next to the header subtitle
+(`v131-version-badge.js`). It reads the `?v=` query that `withEnhancer` and the Pages build
+already append to every script src, so it has no version constant of its own. Ask the user
+what the badge says before debugging a "the change did not arrive" report.
+
+`install` in `sw.js` precaches best-effort, one file at a time. Do not restore
+`cache.addAll(SHELL)`: it rejects the entire install if any single URL fails, which under
+NetSpark or a flaky mobile connection left the old worker active and permanently blocked the
+update. The fetch handler is network-first and refills the cache on first use.
 
 ## Data safety
 
