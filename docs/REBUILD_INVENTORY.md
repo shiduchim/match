@@ -543,6 +543,17 @@ The user decides what to do about these. Each item says what the rebuild will do
 
 ## 12. How the rebuild is organized (so it is easy to change afterwards)
 
+> **Update, same day.** The owner chose to build the new app on the **ZivugBase engine** instead
+> of plain files, keeping this document as the look-and-behavior spec. That engine is Preact,
+> IndexedDB through Dexie, tests and CI, and it lives in `shiduchim/zivugbase`.
+>
+> PeerMatch backups are imported into it, and the import can be repeated safely. The old app is
+> not changed.
+>
+> The plan and the features added from ZivugBase (folders, Intake folder, Calls due for anyone,
+> Memos, and more) are in `docs/REBUILD_PLAN.md` in that repo. The principles below still apply:
+> one owner per thing, no patch layers.
+
 The current app is 75 scripts that patch each other. Adding anything means finding which of them
 really owns the behavior.
 
